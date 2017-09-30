@@ -6,7 +6,7 @@ all:	check
 clean:
 	rm -rf libmalloc.so malloc.o
 
-libmalloc.so: malloc.o
+libmalloc.so: malloc.o free.o realloc.o calloc.o
 	$(CC) $(CFLAGS) -shared -Wl,--unresolved-symbols=ignore-all $< -o $@
 
 test1: test1.o

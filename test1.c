@@ -8,7 +8,7 @@ int main(int argc, char **argv)
   void *mem = malloc(size);
   printf("Successfully malloc'd %zu bytes at addr %p\n", size, mem);
   assert(mem != NULL);
-  // free(mem);
-  // printf("Successfully free'd %zu bytes from addr %p\n", size, mem);
+  free(mem);
+  printf("Successfully free'd %zu bytes from addr %p\n", size, mem);
   return 0;
 }

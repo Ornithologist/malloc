@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
+#include "common.h"
 
 typedef struct MallocHeader
 {

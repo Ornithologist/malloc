@@ -4,11 +4,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <unistd.h>
-
-typedef struct MallocHeader
-{
-  size_t size;
-} MallocHeader;
+#include "common.h"
 
 void *malloc(size_t size)
 {
