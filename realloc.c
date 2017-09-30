@@ -6,11 +6,6 @@
 #include <unistd.h>
 #include "common.h"
 
-typedef struct MallocHeader
-{
-  size_t size;
-} MallocHeader;
-
 void *realloc(void *ptr, size_t size)
 {
   // Allocate new memory (if needed) and copy the bits from old location to new.

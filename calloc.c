@@ -6,11 +6,6 @@
 #include <unistd.h>
 #include "common.h"
 
-typedef struct MallocHeader
-{
-  size_t size;
-} MallocHeader;
-
 void *calloc(size_t nmemb, size_t size)
 {
   return NULL;

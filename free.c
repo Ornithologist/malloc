@@ -6,11 +6,6 @@
 #include <unistd.h>
 #include "common.h"
 
-typedef struct MallocHeader
-{
-  size_t size;
-} MallocHeader;
-
 void free(void *ptr)
 {
   MallocHeader *hdr = ptr - sizeof(MallocHeader);
