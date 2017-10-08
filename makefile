@@ -11,7 +11,7 @@ clean:
 
 lib: libmalloc.so
 
-libmalloc.so: malloc.o
+libmalloc.so: combo.o
 	$(CC) $(CFLAGS) -shared -Wl,--unresolved-symbols=ignore-all $< -o $@ $(CFLAGS_AFT)
 
 test1: test1.o
