@@ -1,23 +1,28 @@
 CC=gcc
-CFLAGS=-g -O0 -fPIC
+CFLAGS=-g -O3 -fPIC -fno-builtin
+CFLAGS_AFT=-lm -lpthread
 
-all:	check
+all: check
+
+default: check
 
 clean:
 	rm -rf libmalloc.so malloc.o
 
-libmalloc.so: malloc.o free.o realloc.o calloc.o
-	$(CC) $(CFLAGS) -lm -shared -Wl,--unresolved-symbols=ignore-all $< -o $@
+lib: libmalloc.so
+
+libmalloc.so: malloc.o
+	$(CC) $(CFLAGS) -shared -Wl,--unresolved-symbols=ignore-all $< -o $@ $(CFLAGS_AFT)
 
 test1: test1.o
-	$(CC) $(CFLAGS) $< -lm -o $@
+	$(CC) $(CFLAGS) $< -o $@ $(CFLAGS_AFT)
 
 # For every XYZ.c file, generate XYZ.o.
 %.o: %.c
-	$(CC) $(CFLAGS) $< -c -lm -o $@
+	$(CC) $(CFLAGS) $< -c -o $@ $(CFLAGS_AFT)
 
-check:	libmalloc.so test1
+check:	clean libmalloc.so test1
 	LD_PRELOAD=`pwd`/libmalloc.so ./test1
 
-dist: clean
-	dir=`basename $$PWD`; cd ..; tar cvf $$dir.tar ./$$dir; gzip $$dir.tar
+dist:
+	dir=`basename $$PWD`; cd ..; tar cvf $$dir.tar ./$$dir; gzip $$dir.tar 

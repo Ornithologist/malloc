@@ -1,21 +1,31 @@
-#include <assert.h>
 #include <stdio.h>
-#include <stdlib.h>
+#include <pthread.h>
+#include <errno.h>
 #include <string.h>
-#include <sys/mman.h>
+#include <stdint.h>
+#include <math.h>
 #include <unistd.h>
+#include <stdbool.h>
+#include <sys/mman.h>
+#include <stddef.h>
 #include "common.h"
 
-void free(void *ptr)
-{
-  MallocHeader *hdr = ptr - sizeof(MallocHeader);
-  // We can't use printf here because printf internally calls `malloc` and thus
-  // we'll get into an infinite recursion leading to a segfault.
-  // Instead, we first write the message into a string and then use the `write`
-  // system call to display it on the console.
-  char buf[1024];
-  snprintf(buf, 1024, "%s:%d free(%p): Freeing %zu bytes from %p\n",
-           __FILE__, __LINE__, ptr, hdr->size, hdr);
-  write(STDOUT_FILENO, buf, strlen(buf) + 1);
-  munmap(hdr, hdr->size);
+void free(void* mem_ptr) {
+	block_header_t* block_ptr = NULL;
+
+	if (ts_arena_ptr == NULL) {
+		return;
+	}
+
+	if (!is_valid_address(ts_arena_ptr, mem_ptr))
+		return;
+
+	block_ptr = (block_header_t*) BLOCK_HEADER_PTR( mem_ptr );
+
+	pthread_mutex_lock(&ts_arena_ptr->arena_lock);
+	ts_arena_ptr->total_free_req++;
+
+	release_block_to_bin(ts_arena_ptr, block_ptr);
+
+	pthread_mutex_unlock(&ts_arena_ptr->arena_lock);
 }
