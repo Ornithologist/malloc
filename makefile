@@ -7,7 +7,7 @@ all: check
 default: check
 
 clean:
-	rm -rf libmalloc.so malloc.o
+	rm -rf libmalloc.so *.o
 
 lib: libmalloc.so
 

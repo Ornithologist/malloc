@@ -11,4 +11,5 @@
 #include "common.h"
 
 void free(void* mem_ptr) {
+    return;
 }

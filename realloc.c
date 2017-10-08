@@ -8,7 +8,6 @@
 #include <stdbool.h>
 #include <sys/mman.h>
 #include <stddef.h>
-#include "malloc"
 #include "common.h"
 
 void* realloc(void* ptr, size_t size)
