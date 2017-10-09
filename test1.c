@@ -4,11 +4,47 @@
 
 int main(int argc, char **argv)
 {
-  size_t size = 12;
-  void *mem = malloc(size);
-  printf("Successfully malloc'd %zu bytes at addr %p\n", size, mem);
-  assert(mem != NULL);
-  free(mem);
-  printf("Successfully free'd %zu bytes from addr %p\n", size, mem);
-  return 0;
+    size_t size = 12;
+    void *mem = malloc(size);
+    printf("Successfully malloc'd %zu bytes at addr %p\n", size, mem);
+    assert(mem != NULL);
+
+    size = 35;
+    mem = malloc(size);
+    printf("Successfully malloc'd %zu bytes at addr %p\n", size, mem);
+    assert(mem != NULL);
+
+    size = 66;
+    mem = malloc(size);
+    printf("Successfully malloc'd %zu bytes at addr %p\n", size, mem);
+    assert(mem != NULL);
+
+    size = 130;
+    mem = malloc(size);
+    printf("Successfully malloc'd %zu bytes at addr %p\n", size, mem);
+    assert(mem != NULL);
+
+    size = 270;
+    mem = malloc(size);
+    printf("Successfully malloc'd %zu bytes at addr %p\n", size, mem);
+    assert(mem != NULL);
+
+    size = 550;
+    mem = malloc(size);
+    printf("Successfully malloc'd %zu bytes at addr %p\n", size, mem);
+    assert(mem != NULL);
+
+    size = 1100;
+    mem = malloc(size);
+    printf("Successfully malloc'd %zu bytes at addr %p\n", size, mem);
+    assert(mem != NULL);
+
+    size = 2200;
+    mem = malloc(size);
+    printf("Successfully malloc'd %zu bytes at addr %p\n", size, mem);
+    assert(mem != NULL);
+
+    //   free(mem);
+    //   printf("Successfully free'd %zu bytes from addr %p\n", size, mem);
+    return 0;
 }

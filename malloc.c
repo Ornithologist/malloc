@@ -66,7 +66,7 @@ int initialize_main_arena() {
     block_ptr->next = NULL;
     block_ptr->order_base_addr = block_ptr;
     block_ptr->status = VACANT;
-    insert_block_to_arena(cur_arena_p, MAX_BINS-1, block_ptr);
+    insert_block_to_arena(cur_arena_p, (MAX_ORDER - MIN_ORDER), block_ptr);
 
     // ini first heap and link to main thread meta
     heap_h_t* heap_ptr = &main_thread_metadata.heap_ptr;
@@ -114,8 +114,11 @@ void insert_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
 }
 
 block_h_t *find_free_block(arena_h_t* ar_ptr, uint8_t bin_index) {
-    if (bin_index == (MAX_BINS - 1))
+    // last bin is for size>4096
+    if (bin_index == (MAX_BINS - 1)) {
+        printf("something is wrong\n");
         return NULL;
+    }
 
     block_h_t *ret_ptr = NULL;
 

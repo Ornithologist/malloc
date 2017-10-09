@@ -55,14 +55,14 @@ typedef struct __malloc_metadata {
 	arena_h_t arena_ptr;
 } malloc_metadata;
 
-int no_of_arenas = 1;
-int no_of_processors = 1;
-long sys_page_size = HEAP_PAGE_SIZE;
-bool malloc_initialized = 0;
+static int no_of_arenas = 1;
+static int no_of_processors = 1;
+static long sys_page_size = HEAP_PAGE_SIZE;
+static bool malloc_initialized = 0;
 static malloc_metadata main_thread_metadata = { 0 };
-__thread arena_h_t *cur_arena_p;
-__thread pthread_key_t cur_arena_key;
-pthread_mutex_t malloc_thread_init_lock = PTHREAD_MUTEX_INITIALIZER;
+static __thread arena_h_t *cur_arena_p;
+static __thread pthread_key_t cur_arena_key;
+static pthread_mutex_t malloc_thread_init_lock = PTHREAD_MUTEX_INITIALIZER;
 
 int initialize_main_arena();
 int initialize_thread_arena();
@@ -79,7 +79,7 @@ void* divide_block_and_add_to_bins(arena_h_t *ar_ptr, uint8_t bin_index,
 
 
 typedef void *(*__hook)(size_t __size, const void *);
-__hook        __malloc_hook = (__hook ) initialize_malloc_lib;
+static __hook __malloc_hook = (__hook ) initialize_malloc_lib;
 
 extern void *malloc(size_t size);
 

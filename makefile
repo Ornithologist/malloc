@@ -11,11 +11,14 @@ clean:
 
 lib: libmalloc.so
 
-libmalloc.so: combo.o
-	$(CC) $(CFLAGS) -shared -Wl,--unresolved-symbols=ignore-all $< -o $@ $(CFLAGS_AFT)
+libmalloc.so: malloc.o free.o calloc.o realloc.o
+	$(CC) -shared -Wl,--unresolved-symbols=ignore-all malloc.o free.o calloc.o realloc.o -o libmalloc.so $(CFLAGS_AFT)
 
 test1: test1.o
 	$(CC) $(CFLAGS) $< -o $@ $(CFLAGS_AFT)
+
+gdb: libmalloc.so test1
+	gdb --args env LD_PRELOAD=./libmalloc.so ./test1
 
 # For every XYZ.c file, generate XYZ.o.
 %.o: %.c
