@@ -12,7 +12,7 @@ clean:
 lib: libmalloc.so
 
 libmalloc.so: malloc.o free.o calloc.o realloc.o
-	$(CC) -shared -Wl,--unresolved-symbols=ignore-all malloc.o free.o calloc.o realloc.o -o libmalloc.so $(CFLAGS_AFT)
+	$(CC) -g -shared -Wl,--unresolved-symbols=ignore-all malloc.o free.o calloc.o realloc.o -o libmalloc.so $(CFLAGS_AFT)
 
 test1: test1.o
 	$(CC) $(CFLAGS) $< -o $@ $(CFLAGS_AFT)
