@@ -32,6 +32,12 @@ typedef struct _block_header {
     struct _block_header *next;
 } block_h_t;
 
+typedef struct _heap_header {
+	size_t size;
+    void *base_block;
+    struct _heap_header *next;
+} heap_h_t;
+
 typedef struct _arena_header {
     pthread_mutex_t lock;
     uint16_t no_of_heaps;
@@ -39,44 +45,38 @@ typedef struct _arena_header {
 	block_h_t* bins[MAX_BINS];
 	size_t bin_counts[MAX_BINS];
 	size_t total_alloc_req;
-	size_t total_free_req;
-	struct _arena_header *next;
+    size_t total_free_req;
+    void *base_heap;
+    struct _arena_header *next;
 } arena_h_t;
 
-typedef struct _heap_header {
-	struct _heap_header *next;
-	size_t size;
-	arena_h_t *arena_ptr;
-	void *base_block;
-} heap_h_t;
-
 typedef struct __malloc_metadata {
-	heap_h_t heap_ptr;
 	arena_h_t arena_ptr;
-} malloc_metadata;
+} mmeta_t;
 
 static int no_of_arenas = 1;
 static int no_of_processors = 1;
 static long sys_page_size = HEAP_PAGE_SIZE;
 static bool malloc_initialized = 0;
-static malloc_metadata main_thread_metadata = { 0 };
+static mmeta_t main_thread_metadata = { 0 };
 static __thread arena_h_t *cur_arena_p;
 static __thread pthread_key_t cur_arena_key;
 static pthread_mutex_t malloc_thread_init_lock = PTHREAD_MUTEX_INITIALIZER;
 
 int initialize_main_arena();
 int initialize_thread_arena();
+int initialize_new_heap(arena_h_t *ar_ptr);
 void thread_destructor(void* ptr);
 void *initialize_malloc_lib(size_t size, const void *caller);
 void release_mmap_blocks(arena_h_t *ar_ptr, block_h_t *block_ptr);
 void insert_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
     block_h_t *block_to_insert);
 
-block_h_t *find_free_block(arena_h_t* ar_ptr, uint8_t bin_index);
+block_h_t *find_free_block(arena_h_t *ar_ptr, uint8_t bin_index);
+void insert_heap_to_arena(arena_h_t *ar_ptr, heap_h_t *heap_ptr);
 void *allocate_new_block(arena_h_t *ar_ptr, size_t size_order);
-void* divide_block_and_add_to_bins(arena_h_t *ar_ptr, uint8_t bin_index,
+void *divide_block_and_add_to_bins(arena_h_t *ar_ptr, uint8_t bin_index,
     block_h_t *mem_block_ptr, int block_size_order);
-
 
 typedef void *(*__hook)(size_t __size, const void *);
 static __hook __malloc_hook = (__hook ) initialize_malloc_lib;
