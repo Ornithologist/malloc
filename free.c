@@ -19,12 +19,11 @@ int validate_addr(arena_h_t *ar_ptr, void *mem_ptr)
         heap_h_t *heap_ptr = (heap_h_t *) ar_ptr->base_heap;
         ret_val = INVALID;
         while (heap_ptr) {
-            print("%p %p %p\n", mem_ptr, (void *)heap_ptr->base_block,
-                  (void *)(((char *)heap_ptr->base_block) + heap_ptr->size));
-
             if ((mem_ptr >= (void *)heap_ptr->base_block) &&
                 (mem_ptr <=
                  (void *)(((char *)heap_ptr->base_block) + heap_ptr->size))) {
+                printf("identified heap region %p %p\n", (void *)heap_ptr->base_block,
+                    (void *)(((char *)heap_ptr->base_block) + heap_ptr->size));
                 ret_val = VALID;
                 break;
             }
@@ -102,8 +101,6 @@ void __lib_free(void *mem_ptr)
         printf("invalid addr\n");
         return;
     }
-
-    printf("releasing now %p\n", mem_ptr);
 
     block_ptr = (block_h_t *)mem_ptr - sizeof(block_h_t);
 

@@ -21,12 +21,13 @@ int main(int argc, char **argv)
     size_t size3 = 2200;
 
     
-    // void *mem2 = allocate(size2);
     void *mem1 = allocate(size1);
     void *mem3 = allocate(size3);
+    void *mem2 = allocate(size3);
+    
     // deallocate(mem2);
     deallocate(mem1);
-    deallocate(mem3);
+    // deallocate(mem3);
 
     return 0;
 }

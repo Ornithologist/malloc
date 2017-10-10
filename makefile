@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-g -O3 -fPIC -fno-builtin
+CFLAGS=-g -O0 -fPIC -fno-builtin
 CFLAGS_AFT=-lm -lpthread
 
 all: check
@@ -12,7 +12,7 @@ clean:
 lib: libmalloc.so
 
 libmalloc.so: malloc.o free.o calloc.o realloc.o
-	$(CC) -g -shared -Wl,--unresolved-symbols=ignore-all malloc.o free.o calloc.o realloc.o -o libmalloc.so $(CFLAGS_AFT)
+	$(CC) -g -o0 -shared -Wl,--unresolved-symbols=ignore-all malloc.o free.o calloc.o realloc.o -o libmalloc.so $(CFLAGS_AFT)
 
 test1: test1.o
 	$(CC) $(CFLAGS) $< -o $@ $(CFLAGS_AFT)

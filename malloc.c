@@ -16,7 +16,8 @@ int no_of_arenas = 1;
 int no_of_processors = 1;
 long sys_page_size = HEAP_PAGE_SIZE;
 bool malloc_initialized = 0;
-mmeta_t main_thread_metadata = {0};
+// mmeta_t main_thread_metadata = {0};
+__thread heap_h_t *cur_base_heap_p;
 __thread arena_h_t *cur_arena_p;
 __thread pthread_key_t cur_arena_key;
 
@@ -50,18 +51,27 @@ void insert_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
     }
 }
 
-void insert_heap_to_arena(arena_h_t *ar_ptr, heap_h_t *heap_ptr)
+void insert_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr)
 {
-    heap_h_t *prev_itr = NULL;
+    heap_h_t *new_heap_ptr, *prev_itr = NULL;
     heap_h_t *itr = (heap_h_t *) ar_ptr->base_heap;
     while (itr != NULL) {
         prev_itr = itr;
         itr = itr->next;
     }
-    if (prev_itr == NULL)
-        ar_ptr->base_heap = heap_ptr;
-    else
-        prev_itr->next = heap_ptr;
+    if (prev_itr == NULL) {
+        new_heap_ptr = (heap_h_t *) ((char *)ar_ptr + sizeof(arena_h_t));
+        new_heap_ptr->size = size;
+        new_heap_ptr->base_block = block_ptr;
+        new_heap_ptr->next = NULL;
+        ar_ptr->base_heap = new_heap_ptr;
+    } else {
+        new_heap_ptr = (heap_h_t *) ((char *)prev_itr + sizeof(heap_h_t));
+        new_heap_ptr->size = size;
+        new_heap_ptr->base_block = block_ptr;
+        new_heap_ptr->next = NULL;
+        prev_itr->next = new_heap_ptr;
+    }
     return;
 }
 
@@ -141,6 +151,22 @@ void *initialize_malloc_lib(size_t size, const void *caller)
 
 void thread_destructor(void *ptr) { return; }
 
+int initialize_arena_meta() {
+    int out = SUCCESS;
+    if ((cur_arena_p = (arena_h_t *)sbrk(sys_page_size)) == NULL) return FAILURE;
+
+    cur_arena_p->status = IN_USE;
+    cur_arena_p->no_of_heaps = 0;
+    cur_arena_p->total_alloc_req = 0;
+    cur_arena_p->total_free_req = 0;
+    cur_arena_p->next = NULL;
+    cur_arena_p->base_heap = NULL;
+    memset(&(cur_arena_p->lock), 0, sizeof(pthread_mutex_t));
+    memset(&(cur_arena_p->bin_counts), 0, sizeof(uint16_t) * MAX_BINS);
+
+    return out;
+}
+
 int initialize_main_arena()
 {
     int out = SUCCESS;
@@ -153,22 +179,17 @@ int initialize_main_arena()
     if ((no_of_processors = sysconf(_SC_NPROCESSORS_ONLN)) == -1)
         no_of_processors = 1;
 
-    // ini arena and link to main thread meta
-    cur_arena_p = &main_thread_metadata.arena_ptr;
-    cur_arena_p->status = IN_USE;
-    cur_arena_p->no_of_heaps = 0;
-    cur_arena_p->total_alloc_req = 0;
-    cur_arena_p->total_free_req = 0;
-    cur_arena_p->next = NULL;
-    cur_arena_p->base_heap = NULL;
-    memset(&(cur_arena_p->lock), 0, sizeof(pthread_mutex_t));
-    memset(&(cur_arena_p->bin_counts), 0, sizeof(uint16_t) * MAX_BINS);
+    // ini arena meta data
+    if ((out = initialize_arena_meta()) == FAILURE) {
+        errno = ENOMEM;
+        return out;
+    }
 
     // bind key
     pthread_key_create(&cur_arena_key, thread_destructor);
     pthread_setspecific(cur_arena_key, (void *)cur_arena_p);
 
-    // ini heap and block
+    // ini heap meta and block
     if ((out = initialize_new_heap(cur_arena_p)) == FAILURE) {
         errno = ENOMEM;
         return out;
@@ -180,17 +201,10 @@ int initialize_main_arena()
 
 int initialize_new_heap(arena_h_t *ar_ptr)
 {
-    heap_h_t *cur = ar_ptr->base_heap;
-    printf("heap %p\n", cur);
-    if (cur != NULL) {
-        printf("next %p\n", cur->next);
-        printf("size %zu\n", cur->size);
-    }
     int out = SUCCESS;
 
     // ini 12 order block
     block_h_t *block_ptr = NULL;
-    heap_h_t new_heap;
 
     if ((block_ptr = (block_h_t *)sbrk(sys_page_size)) == NULL) return FAILURE;
 
@@ -201,16 +215,9 @@ int initialize_new_heap(arena_h_t *ar_ptr)
     insert_block_to_arena(ar_ptr, (MAX_ORDER - MIN_ORDER), block_ptr);
 
     // ini heap and link to given pointer
-    new_heap = (heap_h_t){sys_page_size, block_ptr, NULL};
-    new_heap.next = NULL;
-    insert_heap_to_arena(ar_ptr, &new_heap);
+    insert_heap_to_arena(ar_ptr, sys_page_size, block_ptr);
 
-    cur = ar_ptr->base_heap;
-    printf("heap %p\n", cur);
-    if (cur != NULL) {
-        printf("next %p\n", cur->next);
-        printf("size %zu\n", cur->size);
-    }
+    // cur_base_heap_p = (heap_h_t *) ((char *)cur_arena_p + sizeof(arena_h_t));
 
     return out;
 }
@@ -236,13 +243,6 @@ void *__lib_malloc(size_t size)
 
     uint8_t size_order = SIZE_TO_ORDER(size + sizeof(block_h_t));
     if (size_order < MIN_ORDER) size_order = MIN_ORDER;
-
-    heap_h_t *cur = cur_arena_p->base_heap;
-    printf("xheap %p\n", cur);
-    if (cur != NULL) {
-        printf("xnext %p\n", cur->next);
-        printf("xsize %zu\n", cur->size);
-    }
 
     if (size_order <= MAX_ORDER) {
         if ((ret_addr = find_vacant_block(cur_arena_p,

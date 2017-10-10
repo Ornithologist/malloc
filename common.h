@@ -76,10 +76,6 @@ typedef struct _arena_header {
     struct _arena_header *next;
 } arena_h_t;
 
-typedef struct __malloc_metadata {
-    arena_h_t arena_ptr;
-} mmeta_t;
-
 int initialize_main_arena();
 int initialize_thread_arena();
 int initialize_new_heap(arena_h_t *ar_ptr);
@@ -88,7 +84,7 @@ void thread_destructor(void *ptr);
 void *initialize_malloc_lib(size_t size, const void *caller);
 void release_buddy_block(arena_h_t *ar_ptr, block_h_t *block_ptr);
 void release_mmap_block(arena_h_t *ar_ptr, block_h_t *block_ptr);
-void insert_heap_to_arena(arena_h_t *ar_ptr, heap_h_t *heap_ptr);
+void insert_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr);
 void insert_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
                            block_h_t *block_to_insert);
 void *divide_block_and_add_to_bins(arena_h_t *ar_ptr, uint8_t bin_index,
@@ -108,8 +104,9 @@ extern int no_of_arenas;
 extern int no_of_processors;
 extern long sys_page_size;
 extern bool malloc_initialized;
-extern mmeta_t main_thread_metadata;
+// extern mmeta_t main_thread_metadata;
 extern __thread arena_h_t *cur_arena_p;
+extern __thread heap_h_t *cur_base_heap_p;
 extern __thread pthread_key_t cur_arena_key;
 static pthread_mutex_t malloc_thread_init_lock = PTHREAD_MUTEX_INITIALIZER;
 
