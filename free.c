@@ -89,6 +89,21 @@ void release_buddy_block(arena_h_t *ar_ptr, block_h_t *block_ptr)
     release_buddy_block(ar_ptr, merged_block_ptr);
 }
 
+void remove_heap_from_arena(arena_h_t *ar_ptr, block_h_t *block_ptr){
+    heap_h_t *itr = ar_ptr->base_heap, *prev_itr = NULL;
+    while(itr != NULL && itr->base_block != block_ptr) {
+        prev_itr = itr;
+        itr = itr->next;
+    }
+    if (itr != NULL && prev_itr != NULL) {
+        prev_itr->next = itr->next;
+        ar_ptr->no_of_heaps--;
+    } else if (itr != NULL && prev_itr == NULL) {
+        ar_ptr->base_heap = itr->next;
+        ar_ptr->no_of_heaps--;
+    }
+}
+
 void __lib_free(void *mem_ptr)
 {
     block_h_t *block_ptr = NULL;
@@ -111,7 +126,7 @@ void __lib_free(void *mem_ptr)
         release_buddy_block(cur_arena_p, block_ptr);
     } else {
         size_t size = pow(2, block_ptr->order);
-        remove_heap_from_arena(ar_ptr, block_ptr);
+        remove_heap_from_arena(cur_arena_p, block_ptr);
         int res = munmap(block_ptr->order_base_addr, size);
         assert(res == 0);
     }

@@ -103,6 +103,7 @@ void *initialize_malloc_lib(size_t size, const void *caller);
 void release_buddy_block(arena_h_t *ar_ptr, block_h_t *block_ptr);
 void release_mmap_block(arena_h_t *ar_ptr, block_h_t *block_ptr);
 void insert_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr);
+void remove_heap_from_arena(arena_h_t *ar_ptr, block_h_t *block_ptr);
 void insert_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
                            block_h_t *block_to_insert);
 void *divide_block_and_add_to_bins(arena_h_t *ar_ptr, block_h_t *mem_block_ptr,
