@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <errno.h>
 #include <math.h>
 #include <pthread.h>
@@ -22,10 +23,6 @@ int validate_addr(arena_h_t *ar_ptr, void *mem_ptr)
             if ((mem_ptr >= (void *)heap_ptr->base_block) &&
                 (mem_ptr <=
                  (void *)(((char *)heap_ptr->base_block) + heap_ptr->size))) {
-                printf(
-                    "identified heap region %p %p\n",
-                    (void *)heap_ptr->base_block,
-                    (void *)(((char *)heap_ptr->base_block) + heap_ptr->size));
                 ret_val = VALID;
                 break;
             }
@@ -101,19 +98,22 @@ void __lib_free(void *mem_ptr)
     }
 
     if (validate_addr(cur_arena_p, mem_ptr) == INVALID) {
-        printf("invalid addr\n");
         return;
     }
 
     block_ptr = (block_h_t *)mem_ptr - sizeof(block_h_t);
 
     pthread_mutex_lock(&cur_arena_p->lock);
-    cur_arena_p->total_free_req++;
+    mallinfo_global.freereqs++;
+    cur_mallinfo.freereqs++;
 
     if (block_ptr->order <= MAX_ORDER) {
         release_buddy_block(cur_arena_p, block_ptr);
     } else {
-        // unmap
+        size_t size = pow(2, block_ptr->order);
+        remove_heap_from_arena(ar_ptr, block_ptr);
+        int res = munmap(block_ptr->order_base_addr, size);
+        assert(res == 0);
     }
 
     pthread_mutex_unlock(&cur_arena_p->lock);

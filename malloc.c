@@ -16,10 +16,12 @@ int no_of_arenas = 1;
 int no_of_processors = 1;
 long sys_page_size = HEAP_PAGE_SIZE;
 bool malloc_initialized = 0;
-// mmeta_t main_thread_metadata = {0};
+arena_h_t *main_thread_arena_p;
 __thread heap_h_t *cur_base_heap_p;
 __thread arena_h_t *cur_arena_p;
 __thread pthread_key_t cur_arena_key;
+__thread mallinfo cur_mallinfo = (mallinfo){0, 0, 0, 0, 0, 0};
+mallinfo mallinfo_global = (mallinfo){0, 0, 0, 0, 0, 0};
 
 void insert_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
                            block_h_t *block_to_insert)
@@ -124,13 +126,60 @@ block_h_t *find_vacant_block(arena_h_t *ar_ptr, uint8_t bin_index)
     return ret_ptr;
 }
 
-block_h_t *allocate_new_block(arena_h_t *ar_ptr, size_t size_order)
+block_h_t *find_vacant_mmap_block(arena_h_t *ar_ptr, uint8_t size_order)
+{
+    block_h_t *prev_itr = NULL, *ret_ptr = NULL,
+              *itr = ar_ptr->bins[MAX_BINS - 1];
+
+    while (itr != NULL && itr->order < size_order) {
+        prev_itr = itr;
+        itr = itr->next;
+    }
+
+    if (prev_itr != NULL && itr != NULL) {
+        ret_ptr = itr;
+        prev_itr->next = itr->next;
+        ar_ptr->bin_counts[MAX_BINS - 1]--;
+    } else if (prev_itr == NULL && itr != NULL) {
+        ret_ptr = itr;
+        ar_ptr->bins[MAX_BINS - 1] = itr->next;
+        ar_ptr->bin_counts[MAX_BINS - 1]--;
+    }
+
+    return ret_ptr;
+}
+
+block_h_t *sbrk_new_block(arena_h_t *ar_ptr, uint8_t size_order)
 {
     if (initialize_new_heap(ar_ptr) == FAILURE) {
         errno = ENOMEM;
         return NULL;
     }
     return find_vacant_block(ar_ptr, size_order - MIN_ORDER);
+}
+
+block_h_t *mmap_new_block(arena_h_t *ar_ptr, uint8_t size_order)
+{
+    size_t size = pow(2, size_order);
+    block_h_t *block_ptr = NULL;
+    void *mmapped;
+
+    if ((mmapped = mmap(NULL, size, PROT_READ | PROT_WRITE,
+                        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)) == MAP_FAILED) {
+        errno = ENOMEM;
+        return NULL;
+    }
+
+    block_ptr = (block_h_t *) mmapped;
+    block_ptr->order = size_order;
+    block_ptr->order_base_addr = mmapped;
+    block_ptr->status = VACANT;
+    block_ptr->next = NULL;
+    insert_block_to_arena(ar_ptr, (MAX_ORDER - MIN_ORDER), block_ptr);
+
+    // ini heap and link to given pointer
+    insert_heap_to_arena(ar_ptr, size, block_ptr);
+    return block_ptr;
 }
 
 void *initialize_malloc_lib(size_t size, const void *caller)
@@ -158,8 +207,6 @@ int initialize_arena_meta()
 
     cur_arena_p->status = IN_USE;
     cur_arena_p->no_of_heaps = 0;
-    cur_arena_p->total_alloc_req = 0;
-    cur_arena_p->total_free_req = 0;
     cur_arena_p->next = NULL;
     cur_arena_p->base_heap = NULL;
     memset(&(cur_arena_p->lock), 0, sizeof(pthread_mutex_t));
@@ -196,7 +243,9 @@ int initialize_main_arena()
         return out;
     }
 
+    // raise flag
     malloc_initialized = 1;
+    main_thread_arena_p = cur_arena_p;
     return out;
 }
 
@@ -217,9 +266,6 @@ int initialize_new_heap(arena_h_t *ar_ptr)
 
     // ini heap and link to given pointer
     insert_heap_to_arena(ar_ptr, sys_page_size, block_ptr);
-
-    // cur_base_heap_p = (heap_h_t *) ((char *)cur_arena_p + sizeof(arena_h_t));
-
     return out;
 }
 
@@ -240,7 +286,8 @@ void *__lib_malloc(size_t size)
         return NULL;
     }
     pthread_mutex_lock(&cur_arena_p->lock);
-    cur_arena_p->total_alloc_req++;
+    mallinfo_global.alloreqs++;
+    cur_mallinfo.alloreqs++;
 
     uint8_t size_order = SIZE_TO_ORDER(size + sizeof(block_h_t));
     if (size_order < MIN_ORDER) size_order = MIN_ORDER;
@@ -248,14 +295,16 @@ void *__lib_malloc(size_t size)
     if (size_order <= MAX_ORDER) {
         if ((ret_addr = find_vacant_block(cur_arena_p,
                                           (size_order - MIN_ORDER))) != NULL ||
-            (ret_addr = allocate_new_block(cur_arena_p, size_order)) != NULL) {
+            (ret_addr = sbrk_new_block(cur_arena_p, size_order)) != NULL) {
             ret_addr->status = IN_USE;
             ret_addr = (void *)(ret_addr + sizeof(block_h_t));
         }
     } else {
-        // TODO: handle larger than 4096 blocks
-        errno = ENOMEM;
-        return NULL;
+        if ((ret_addr = find_vacant_mmap_block(cur_arena_p, size_order)) != NULL ||
+                (ret_addr = mmap_new_block(cur_arena_p, size_order)) != NULL) {
+            ret_addr->status = IN_USE;
+            ret_addr = (void *)(ret_addr + sizeof(block_h_t));
+        }
     }
 
     pthread_mutex_unlock(&cur_arena_p->lock);

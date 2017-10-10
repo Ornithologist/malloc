@@ -60,8 +60,6 @@ typedef struct _heap_header {
  * @attri status: VACANT (no allocation yet) / IN_USE (at least one allocation)
  * @attri bins: array of blocks, each with order 5 to 12, and bigger than 12
  * @attri bin_counts: number of blocks in different order
- * @attri total_alloc_req: number of allocation requests
- * @attri total_free_req: number of free requests
  * @attri base_heap: pointer to the first heap struct belongs to this arena
  */
 typedef struct _arena_header {
@@ -70,11 +68,31 @@ typedef struct _arena_header {
     uint8_t status;
     block_h_t *bins[MAX_BINS];
     size_t bin_counts[MAX_BINS];
-    size_t total_alloc_req;
-    size_t total_free_req;
     void *base_heap;
     struct _arena_header *next;
 } arena_h_t;
+
+/*
+ * struct for malloc info
+ * @attri arena: total number of bytes allocated with mmap/sbrk
+ * @attri narenas: number of arenas
+ * @attri alloreqs: number of allocation requests
+ * @attri freereqs: number of free requests
+ * @attri alloreqs: number of allocated blocks
+ * @attri freereqs: number of free blocks
+ * @attri uordblks: total allocated space in bytes
+ * @attri fordblks: total free space in bytes
+ */
+typedef struct _mallinfo {
+    int arena;
+    int narenas;
+    int alloreqs;
+    int freereqs;
+    int alloblks;
+    int freeblks;
+    int uordblks;
+    int fordblks;
+} mallinfo;
 
 int initialize_main_arena();
 int initialize_thread_arena();
@@ -91,19 +109,24 @@ void *divide_block_and_add_to_bins(arena_h_t *ar_ptr, block_h_t *mem_block_ptr,
                                    int block_size_order);
 
 block_h_t *find_vacant_block(arena_h_t *ar_ptr, uint8_t bin_index);
-block_h_t *allocate_new_block(arena_h_t *ar_ptr, size_t size_order);
+block_h_t *find_vacant_mmap_block(arena_h_t *ar_ptr, uint8_t size_order);
+block_h_t *sbrk_new_block(arena_h_t *ar_ptr, uint8_t size_order);
+block_h_t *mmap_new_block(arena_h_t *ar_ptr, uint8_t size_order);
 block_h_t *find_vacant_buddy(block_h_t *block_ptr);
 
 typedef void *(*__hook)(size_t __size, const void *);
 static __hook __malloc_hook = (__hook)initialize_malloc_lib;
 
 extern void *malloc(size_t size);
+extern void *free(void *mem_ptr);
 
 extern int no_of_arenas;
 extern int no_of_processors;
 extern long sys_page_size;
 extern bool malloc_initialized;
-// extern mmeta_t main_thread_metadata;
+extern mallinfo mallinfo_global;
+extern arena_h_t *main_thread_arena_p;
+extern __thread mallinfo cur_mallinfo;
 extern __thread arena_h_t *cur_arena_p;
 extern __thread heap_h_t *cur_base_heap_p;
 extern __thread pthread_key_t cur_arena_key;
