@@ -10,16 +10,16 @@
 #include <unistd.h>
 #include "common.h"
 
-int validate_addr(heap_h_t *base_heap_p, void *mem_ptr)
+int validate_addr(arena_h_t *ar_ptr, void *mem_ptr)
 {
     int ret_val = VALID;
     if (mem_ptr == NULL) {
         ret_val = INVALID;
     } else {
-        heap_h_t *heap_ptr = base_heap_p;
+        heap_h_t *heap_ptr = (heap_h_t *) ar_ptr->base_heap;
         ret_val = INVALID;
         while (heap_ptr) {
-            printf("%p %p %p\n", mem_ptr, (void *)heap_ptr->base_block,
+            print("%p %p %p\n", mem_ptr, (void *)heap_ptr->base_block,
                   (void *)(((char *)heap_ptr->base_block) + heap_ptr->size));
 
             if ((mem_ptr >= (void *)heap_ptr->base_block) &&
@@ -45,6 +45,7 @@ block_h_t *find_vacant_buddy(block_h_t *block_ptr)
         buddy_ptr = (block_h_t *)((char *)block_ptr + size);
 
     if (buddy_ptr->status == VACANT) return buddy_ptr;
+    printf("buddy located at %p\n", buddy_ptr);
     return NULL;
 }
 
@@ -97,10 +98,12 @@ void __lib_free(void *mem_ptr)
         return;
     }
 
-    if (validate_addr(cur_base_heap_p, mem_ptr) == INVALID) {
+    if (validate_addr(cur_arena_p, mem_ptr) == INVALID) {
         printf("invalid addr\n");
         return;
     }
+
+    printf("releasing now %p\n", mem_ptr);
 
     block_ptr = (block_h_t *)mem_ptr - sizeof(block_h_t);
 
