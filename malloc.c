@@ -95,10 +95,10 @@ void *divide_block_and_add_to_bins(arena_h_t *ar_ptr, block_h_t *mem_block_ptr,
     block_hdr->status = VACANT;
     block_hdr->order = block_size_order - 1;
     block_hdr->order_base_addr = mem_block_ptr->order_base_addr;
-    // add first buddy to arena
+    // add second buddy to arena
     insert_block_to_arena(ar_ptr, block_size_order - 1 - MIN_ORDER,
-                          mem_block_1);
-    return mem_block_2;
+                          mem_block_2);
+    return mem_block_1;
 }
 
 block_h_t *find_vacant_block(arena_h_t *ar_ptr, uint8_t bin_index)
@@ -117,6 +117,8 @@ block_h_t *find_vacant_block(arena_h_t *ar_ptr, uint8_t bin_index)
     } else {
         block_h_t *block =
             (block_h_t *)find_vacant_block(ar_ptr, bin_index + 1);
+
+        printf("to be divided %p\n", block);
 
         if (block != NULL) {
             ret_ptr = divide_block_and_add_to_bins(ar_ptr, block, block->order);
@@ -258,6 +260,8 @@ int initialize_new_heap(arena_h_t *ar_ptr)
 
     if ((block_ptr = (block_h_t *)sbrk(sys_page_size)) == NULL) return FAILURE;
 
+    printf("%p %zu\n", block_ptr, sys_page_size);
+
     block_ptr->order = MAX_ORDER;
     block_ptr->order_base_addr = block_ptr;
     block_ptr->status = VACANT;
@@ -297,13 +301,13 @@ void *__lib_malloc(size_t size)
                                           (size_order - MIN_ORDER))) != NULL ||
             (ret_addr = sbrk_new_block(cur_arena_p, size_order)) != NULL) {
             ret_addr->status = IN_USE;
-            ret_addr = (void *)(ret_addr + sizeof(block_h_t));
+            ret_addr = (void *)((char *)ret_addr + sizeof(block_h_t));
         }
     } else {
         if ((ret_addr = find_vacant_mmap_block(cur_arena_p, size_order)) != NULL ||
                 (ret_addr = mmap_new_block(cur_arena_p, size_order)) != NULL) {
             ret_addr->status = IN_USE;
-            ret_addr = (void *)(ret_addr + sizeof(block_h_t));
+            ret_addr = (void *)((char *)ret_addr + sizeof(block_h_t));
         }
     }
 

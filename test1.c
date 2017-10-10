@@ -14,33 +14,48 @@ void deallocate(void *mem_ptr) {
     printf("Successfully free'd from addr %p\n", mem_ptr);
 }
 
+void *callocate(size_t a, size_t b) {
+    void *mem = calloc(a, b);
+    assert(mem != NULL);
+    printf("Successfully calloc'd %zu bytes at addr %p\n", a * b, mem);
+    return mem;
+}
+
 int main(int argc, char **argv)
 {
-    size_t size1 = 12;
-    size_t size2 = 1100;
-    size_t size3 = 2200;
+    // size_t size1 = 12;
+    // size_t size2 = 1100;
+    // size_t size3 = 2200;
     
-    void *mem1 = allocate(size1);
-    void *mem2 = allocate(size2);
-    void *mem3 = allocate(size3);
+    // void *mem1 = allocate(size1);
+    // void *mem2 = allocate(size2);
+    // void *mem3 = allocate(size3);
     
-    deallocate(mem2);
-    deallocate(mem1);
-    deallocate(mem3);
+    // deallocate(mem2);
+    // deallocate(mem1);
+    // deallocate(mem3);
 
-    mem1 = allocate(450);
-    mem2 = allocate(150);
-    mem3 = allocate(23);
+    // mem1 = allocate(450);
+    // mem2 = allocate(150);
+    // mem3 = allocate(23);
 
-    deallocate(mem3);
-    deallocate(mem2);
-    deallocate(mem1);
+    // deallocate(mem3);
+    // deallocate(mem2);
+    // deallocate(mem1);
 
-    mem1 = allocate(8900);
-    mem2 = allocate(5600);
-    mem3 = allocate(2);
-    deallocate(mem3);
+    // mem1 = allocate(8900);
+    // mem2 = allocate(5600);
+    // mem3 = allocate(2);
+    // deallocate(mem3);
+    // deallocate(mem1);
+    // deallocate(mem2);
+
+    // void *mem = malloc(2400);
+    void *mem1 = calloc(3, 4);
     deallocate(mem1);
-    deallocate(mem2);
+    int *a = (int *) malloc(sizeof(int));
+    // void *mem = malloc(2400);
+    // void *mem2 = malloc(2300);
+    (*a) = 18;
     return 0;
 }

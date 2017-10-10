@@ -118,8 +118,10 @@ block_h_t *find_vacant_buddy(block_h_t *block_ptr);
 typedef void *(*__hook)(size_t __size, const void *);
 static __hook __malloc_hook = (__hook)initialize_malloc_lib;
 
+void *__lib_malloc(size_t size);
 extern void *malloc(size_t size);
 extern void *free(void *mem_ptr);
+extern void *calloc(size_t nmemb, size_t size);
 
 extern int no_of_arenas;
 extern int no_of_processors;
