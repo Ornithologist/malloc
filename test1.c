@@ -17,17 +17,15 @@ void deallocate(void *mem_ptr) {
 int main(int argc, char **argv)
 {
     size_t size1 = 12;
-    // size_t size2 = 1100;
+    size_t size2 = 1100;
     size_t size3 = 2200;
-
     
     void *mem1 = allocate(size1);
+    void *mem2 = allocate(size2);
     void *mem3 = allocate(size3);
-    void *mem2 = allocate(size3);
     
-    // deallocate(mem2);
+    deallocate(mem2);
     deallocate(mem1);
-    // deallocate(mem3);
-
+    deallocate(mem3);
     return 0;
 }

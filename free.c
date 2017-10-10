@@ -16,13 +16,15 @@ int validate_addr(arena_h_t *ar_ptr, void *mem_ptr)
     if (mem_ptr == NULL) {
         ret_val = INVALID;
     } else {
-        heap_h_t *heap_ptr = (heap_h_t *) ar_ptr->base_heap;
+        heap_h_t *heap_ptr = (heap_h_t *)ar_ptr->base_heap;
         ret_val = INVALID;
         while (heap_ptr) {
             if ((mem_ptr >= (void *)heap_ptr->base_block) &&
                 (mem_ptr <=
                  (void *)(((char *)heap_ptr->base_block) + heap_ptr->size))) {
-                printf("identified heap region %p %p\n", (void *)heap_ptr->base_block,
+                printf(
+                    "identified heap region %p %p\n",
+                    (void *)heap_ptr->base_block,
                     (void *)(((char *)heap_ptr->base_block) + heap_ptr->size));
                 ret_val = VALID;
                 break;
@@ -51,8 +53,9 @@ block_h_t *find_vacant_buddy(block_h_t *block_ptr)
 void release_buddy_block(arena_h_t *ar_ptr, block_h_t *block_ptr)
 {
     uint8_t bin_index;
-    block_h_t *itr, *prev_itr, *merged_block_ptr, *buddy_block_ptr = NULL;
     uint8_t order = block_ptr->order;
+    block_h_t *merged_block_ptr, *itr = NULL, *prev_itr = NULL,
+                                 *buddy_block_ptr = NULL;
 
     // stop releasing when reaching max or IN_USE buddy
     if (order == MAX_ORDER ||
@@ -65,7 +68,7 @@ void release_buddy_block(arena_h_t *ar_ptr, block_h_t *block_ptr)
     bin_index = order - MIN_ORDER;
     itr = ar_ptr->bins[bin_index];
 
-    while (itr == NULL && itr != buddy_block_ptr) {
+    while (itr != NULL && itr != buddy_block_ptr) {
         prev_itr = itr;
         itr = itr->next;
     }

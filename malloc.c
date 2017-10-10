@@ -54,19 +54,19 @@ void insert_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
 void insert_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr)
 {
     heap_h_t *new_heap_ptr, *prev_itr = NULL;
-    heap_h_t *itr = (heap_h_t *) ar_ptr->base_heap;
+    heap_h_t *itr = (heap_h_t *)ar_ptr->base_heap;
     while (itr != NULL) {
         prev_itr = itr;
         itr = itr->next;
     }
     if (prev_itr == NULL) {
-        new_heap_ptr = (heap_h_t *) ((char *)ar_ptr + sizeof(arena_h_t));
+        new_heap_ptr = (heap_h_t *)((char *)ar_ptr + sizeof(arena_h_t));
         new_heap_ptr->size = size;
         new_heap_ptr->base_block = block_ptr;
         new_heap_ptr->next = NULL;
         ar_ptr->base_heap = new_heap_ptr;
     } else {
-        new_heap_ptr = (heap_h_t *) ((char *)prev_itr + sizeof(heap_h_t));
+        new_heap_ptr = (heap_h_t *)((char *)prev_itr + sizeof(heap_h_t));
         new_heap_ptr->size = size;
         new_heap_ptr->base_block = block_ptr;
         new_heap_ptr->next = NULL;
@@ -75,8 +75,7 @@ void insert_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr)
     return;
 }
 
-void *divide_block_and_add_to_bins(arena_h_t *ar_ptr, uint8_t bin_index,
-                                   block_h_t *mem_block_ptr,
+void *divide_block_and_add_to_bins(arena_h_t *ar_ptr, block_h_t *mem_block_ptr,
                                    int block_size_order)
 {
     int size = pow(2, block_size_order);
@@ -95,7 +94,8 @@ void *divide_block_and_add_to_bins(arena_h_t *ar_ptr, uint8_t bin_index,
     block_hdr->order = block_size_order - 1;
     block_hdr->order_base_addr = mem_block_ptr->order_base_addr;
     // add first buddy to arena
-    insert_block_to_arena(ar_ptr, bin_index, mem_block_1);
+    insert_block_to_arena(ar_ptr, block_size_order - 1 - MIN_ORDER,
+                          mem_block_1);
     return mem_block_2;
 }
 
@@ -117,8 +117,7 @@ block_h_t *find_vacant_block(arena_h_t *ar_ptr, uint8_t bin_index)
             (block_h_t *)find_vacant_block(ar_ptr, bin_index + 1);
 
         if (block != NULL) {
-            ret_ptr = divide_block_and_add_to_bins(ar_ptr, bin_index, block,
-                                                   block->order);
+            ret_ptr = divide_block_and_add_to_bins(ar_ptr, block, block->order);
         }
     }
 
@@ -151,9 +150,11 @@ void *initialize_malloc_lib(size_t size, const void *caller)
 
 void thread_destructor(void *ptr) { return; }
 
-int initialize_arena_meta() {
+int initialize_arena_meta()
+{
     int out = SUCCESS;
-    if ((cur_arena_p = (arena_h_t *)sbrk(sys_page_size)) == NULL) return FAILURE;
+    if ((cur_arena_p = (arena_h_t *)sbrk(sys_page_size)) == NULL)
+        return FAILURE;
 
     cur_arena_p->status = IN_USE;
     cur_arena_p->no_of_heaps = 0;
