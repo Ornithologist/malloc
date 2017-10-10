@@ -27,6 +27,13 @@
 
 #define SIZE_TO_ORDER(size) (ceil((log(size) / log(BASE))))
 
+/*
+ * struct for a memory block in the buddy system
+ * @attri order: the log(size_in_bytes) / log(2)
+ * @attri status: IN_USE (returned by malloc) / VACANT (free to use)
+ * @attri order_base_addr: the base address of the parent block
+ * @attri next: pointer to the cloest next block with the same order
+ */
 typedef struct _block_header {
     uint8_t order;
     uint8_t status;
@@ -34,12 +41,29 @@ typedef struct _block_header {
     struct _block_header *next;
 } block_h_t;
 
+/*
+ * struct for an integral memory region allocated with sbrk or mmap
+ * @attri size: size in bytes, must be multiple of PAGE_SIZE
+ * @attri base_block: the starting address of this memory region
+ * @attri next: pointer to the next heap_h_t from the same arena
+ */
 typedef struct _heap_header {
     size_t size;
     void *base_block;
     struct _heap_header *next;
 } heap_h_t;
 
+/*
+ * struct for per-thread memory arena
+ * @attri lock: mutext lock
+ * @attri no_of_heaps: number of heaps this arena maintains
+ * @attri status: VACANT (no allocation yet) / IN_USE (at least one allocation)
+ * @attri bins: array of blocks, each with order 5 to 12, and bigger than 12
+ * @attri bin_counts: number of blocks in different order
+ * @attri total_alloc_req: number of allocation requests
+ * @attri total_free_req: number of free requests
+ * @attri base_heap: pointer to the first heap struct belongs to this arena
+ */
 typedef struct _arena_header {
     pthread_mutex_t lock;
     uint16_t no_of_heaps;
@@ -55,15 +79,6 @@ typedef struct _arena_header {
 typedef struct __malloc_metadata {
     arena_h_t arena_ptr;
 } mmeta_t;
-
-static int no_of_arenas = 1;
-static int no_of_processors = 1;
-static long sys_page_size = HEAP_PAGE_SIZE;
-static bool malloc_initialized = 0;
-static mmeta_t main_thread_metadata = {0};
-static __thread arena_h_t *cur_arena_p;
-static __thread pthread_key_t cur_arena_key;
-static pthread_mutex_t malloc_thread_init_lock = PTHREAD_MUTEX_INITIALIZER;
 
 int initialize_main_arena();
 int initialize_thread_arena();
@@ -88,6 +103,15 @@ typedef void *(*__hook)(size_t __size, const void *);
 static __hook __malloc_hook = (__hook)initialize_malloc_lib;
 
 extern void *malloc(size_t size);
+
+extern int no_of_arenas;
+extern int no_of_processors;
+extern long sys_page_size;
+extern bool malloc_initialized;
+extern mmeta_t main_thread_metadata;
+extern __thread arena_h_t *cur_arena_p;
+extern __thread pthread_key_t cur_arena_key;
+static pthread_mutex_t malloc_thread_init_lock = PTHREAD_MUTEX_INITIALIZER;
 
 typedef void (*pthread_atfork_handlers)(void);
 typedef void (*thread_exit_handlers)(void *);

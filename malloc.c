@@ -10,6 +10,16 @@
 #include <unistd.h>
 #include "common.h"
 
+// ini extern
+// FIXME: a better way to organise ?
+int no_of_arenas = 1;
+int no_of_processors = 1;
+long sys_page_size = HEAP_PAGE_SIZE;
+bool malloc_initialized = 0;
+mmeta_t main_thread_metadata = {0};
+__thread arena_h_t *cur_arena_p;
+__thread pthread_key_t cur_arena_key;
+
 void insert_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
                            block_h_t *block_to_insert)
 {
@@ -42,10 +52,17 @@ void insert_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
 
 void insert_heap_to_arena(arena_h_t *ar_ptr, heap_h_t *heap_ptr)
 {
-    heap_h_t *itr = (heap_h_t *)ar_ptr->base_heap;
-    while (itr != NULL) itr = itr->next;
-    itr = heap_ptr;
-    ar_ptr->no_of_heaps++;
+    heap_h_t *prev_itr = NULL;
+    heap_h_t *itr = (heap_h_t *) ar_ptr->base_heap;
+    while (itr != NULL) {
+        prev_itr = itr;
+        itr = itr->next;
+    }
+    if (prev_itr == NULL)
+        ar_ptr->base_heap = heap_ptr;
+    else
+        prev_itr->next = heap_ptr;
+    return;
 }
 
 void *divide_block_and_add_to_bins(arena_h_t *ar_ptr, uint8_t bin_index,
@@ -154,7 +171,6 @@ int initialize_main_arena()
     // ini heap and block
     if ((out = initialize_new_heap(cur_arena_p)) == FAILURE) {
         errno = ENOMEM;
-        out = FAILURE;
         return out;
     }
 
@@ -164,6 +180,12 @@ int initialize_main_arena()
 
 int initialize_new_heap(arena_h_t *ar_ptr)
 {
+    heap_h_t *cur = ar_ptr->base_heap;
+    printf("heap %p\n", cur);
+    if (cur != NULL) {
+        printf("next %p\n", cur->next);
+        printf("size %zu\n", cur->size);
+    }
     int out = SUCCESS;
 
     // ini 12 order block
@@ -180,7 +202,15 @@ int initialize_new_heap(arena_h_t *ar_ptr)
 
     // ini heap and link to given pointer
     new_heap = (heap_h_t){sys_page_size, block_ptr, NULL};
+    new_heap.next = NULL;
     insert_heap_to_arena(ar_ptr, &new_heap);
+
+    cur = ar_ptr->base_heap;
+    printf("heap %p\n", cur);
+    if (cur != NULL) {
+        printf("next %p\n", cur->next);
+        printf("size %zu\n", cur->size);
+    }
 
     return out;
 }
@@ -201,12 +231,18 @@ void *__lib_malloc(size_t size)
         errno = ENOMEM;
         return NULL;
     }
-
     pthread_mutex_lock(&cur_arena_p->lock);
     cur_arena_p->total_alloc_req++;
 
     uint8_t size_order = SIZE_TO_ORDER(size + sizeof(block_h_t));
     if (size_order < MIN_ORDER) size_order = MIN_ORDER;
+
+    heap_h_t *cur = cur_arena_p->base_heap;
+    printf("xheap %p\n", cur);
+    if (cur != NULL) {
+        printf("xnext %p\n", cur->next);
+        printf("xsize %zu\n", cur->size);
+    }
 
     if (size_order <= MAX_ORDER) {
         if ((ret_addr = find_vacant_block(cur_arena_p,
@@ -214,7 +250,6 @@ void *__lib_malloc(size_t size)
             (ret_addr = allocate_new_block(cur_arena_p, size_order)) != NULL) {
             ret_addr->status = IN_USE;
             ret_addr = (void *)(ret_addr + sizeof(block_h_t));
-            printf("%x\n", ret_addr);
         }
     } else {
         // TODO: handle larger than 4096 blocks
