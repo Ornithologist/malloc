@@ -254,8 +254,30 @@ void *initialize_lib(size_t size, const void *caller)
     return malloc(size);
 }
 
-// TODO: add thread destructor
-void thread_destructor(void *ptr) { return; }
+void thread_destructor(void *ptr) {
+    if(ptr == NULL)
+        return;
+
+    arena_h_t* ar_ptr = ptr;
+
+    pthread_mutex_lock(&lib_ini_lock);
+    pthread_mutex_lock(&ar_ptr->lock);
+
+    arena_h_t *itr = main_thread_arena_p, *prev_itr = NULL;
+    while (itr != NULL && itr != ar_ptr) {
+        prev_itr = itr;
+        itr = itr->next;
+    }
+
+    if (itr != NULL && prev_itr != NULL) {
+        prev_itr->next = itr->next;
+    } else if (itr != NULL && prev_itr == NULL) {
+        main_thread_arena_p = itr->next;
+    }
+
+    pthread_mutex_unlock(&ar_ptr->lock);
+    pthread_mutex_unlock(&lib_ini_lock);
+}
 
 /*
  * allocate a memory region of PAGE_SIZE;
@@ -364,7 +386,16 @@ int initialize_thread_arena() {
     }
 
     // link arena
-
+    arena_h_t *itr = main_thread_arena_p, *prev_itr = NULL;
+    while (itr != NULL) {
+        prev_itr = itr;
+        itr = itr->next;
+    }
+    if (prev_itr != NULL) {
+        prev_itr->next = cur_arena_p;
+    } else {
+        main_thread_arena_p = cur_arena_p;
+    }
     return out;
 }
 
