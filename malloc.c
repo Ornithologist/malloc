@@ -29,31 +29,31 @@ __thread mallinfo cur_mallinfo = (mallinfo){0, 0, 0, 0, 0, 0};
  * by sorting from smallest addr to largest addr
  */
 void link_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
-                           block_h_t *block_to_insert)
+                           block_h_t *vacant_block)
 {
     ar_ptr->bin_counts[bin_index]++;
-    block_to_insert->next = NULL;
+    vacant_block->next = NULL;
 
     if (ar_ptr->bins[bin_index] == NULL) {  // first comer
-        ar_ptr->bins[bin_index] = block_to_insert;
-    } else if (block_to_insert <
+        ar_ptr->bins[bin_index] = vacant_block;
+    } else if (vacant_block <
                ar_ptr->bins[bin_index]) {  // link as start tail
-        block_to_insert->next = ar_ptr->bins[bin_index];
-        ar_ptr->bins[bin_index] = block_to_insert;
+        vacant_block->next = ar_ptr->bins[bin_index];
+        ar_ptr->bins[bin_index] = vacant_block;
     } else {  // link through all existing bins of the same order
         block_h_t *itr = ar_ptr->bins[bin_index], *prev_block = NULL;
 
-        while (itr != NULL && block_to_insert > itr) {
+        while (itr != NULL && vacant_block > itr) {
             prev_block = itr;
             itr = itr->next;
         }
 
         if (itr == NULL) {  // link as end tail
-            block_to_insert->next = NULL;
-            prev_block->next = block_to_insert;
+            vacant_block->next = NULL;
+            prev_block->next = vacant_block;
         } else {  // link in the middle
-            block_to_insert->next = prev_block->next;
-            prev_block->next = block_to_insert;
+            vacant_block->next = prev_block->next;
+            prev_block->next = vacant_block;
         }
     }
 }
