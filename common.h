@@ -106,7 +106,7 @@ void insert_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr);
 void remove_heap_from_arena(arena_h_t *ar_ptr, block_h_t *block_ptr);
 void insert_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
                            block_h_t *block_to_insert);
-void *divide_block_and_add_to_bins(arena_h_t *ar_ptr, block_h_t *mem_block_ptr,
+void *split_block_to_buddies(arena_h_t *ar_ptr, block_h_t *mem_block_ptr,
                                    int block_size_order);
 
 block_h_t *find_vacant_block(arena_h_t *ar_ptr, uint8_t bin_index);
@@ -122,6 +122,7 @@ void *__lib_malloc(size_t size);
 extern void *malloc(size_t size);
 extern void *free(void *mem_ptr);
 extern void *calloc(size_t nmemb, size_t size);
+extern void *realloc(void *ptr, size_t size);
 
 extern long sys_page_size;
 extern bool malloc_initialized;
