@@ -102,9 +102,9 @@ void thread_destructor(void *ptr);
 void *initialize_lib(size_t size, const void *caller);
 void release_buddy_block(arena_h_t *ar_ptr, block_h_t *block_ptr);
 void release_mmap_block(arena_h_t *ar_ptr, block_h_t *block_ptr);
-void insert_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr);
+void link_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr);
 void remove_heap_from_arena(arena_h_t *ar_ptr, block_h_t *block_ptr);
-void insert_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
+void link_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
                            block_h_t *block_to_insert);
 void *split_block_to_buddies(arena_h_t *ar_ptr, block_h_t *mem_block_ptr,
                                    int block_size_order);

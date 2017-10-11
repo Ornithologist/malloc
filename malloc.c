@@ -28,7 +28,7 @@ __thread mallinfo cur_mallinfo = (mallinfo){0, 0, 0, 0, 0, 0};
  * link block to ar_ptr->bins[bin_index]
  * by sorting from smallest addr to largest addr
  */
-void insert_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
+void link_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
                            block_h_t *block_to_insert)
 {
     ar_ptr->bin_counts[bin_index]++;
@@ -62,7 +62,7 @@ void insert_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
  * create a heap with size=size, base_block=block_ptr;
  * link the heap to ar_ptr->base_heap by appending to the link list
  */
-void insert_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr)
+void link_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr)
 {
     heap_h_t *new_heap_ptr, *prev_itr = NULL;
     heap_h_t *itr = (heap_h_t *)ar_ptr->base_heap;
@@ -110,7 +110,7 @@ void *split_block_to_buddies(arena_h_t *ar_ptr, block_h_t *mem_block_ptr,
     block_hdr->order = block_size_order - 1;
     block_hdr->order_base_addr = mem_block_ptr->order_base_addr;
     // add second buddy to arena
-    insert_block_to_arena(ar_ptr, block_size_order - 1 - MIN_ORDER,
+    link_block_to_arena(ar_ptr, block_size_order - 1 - MIN_ORDER,
                           mem_block_2);
     return mem_block_1;
 }
@@ -208,10 +208,10 @@ block_h_t *mmap_new_block(arena_h_t *ar_ptr, uint8_t size_order)
     block_ptr->order_base_addr = mmapped;
     block_ptr->status = VACANT;
     block_ptr->next = NULL;
-    insert_block_to_arena(ar_ptr, (MAX_ORDER - MIN_ORDER), block_ptr);
+    link_block_to_arena(ar_ptr, (MAX_ORDER - MIN_ORDER), block_ptr);
 
     // ini heap and link to given pointer
-    insert_heap_to_arena(ar_ptr, size, block_ptr);
+    link_heap_to_arena(ar_ptr, size, block_ptr);
     return block_ptr;
 }
 
@@ -323,7 +323,7 @@ int initialize_main_arena()
 /*
  * allocate memory of PAGE_SIZE with sbrk;
  * point the returned addr to the initial block (of MAX_ORDER);
- * call @insert_block_to_arena and @insert_heap_to_arena
+ * call @link_block_to_arena and @link_heap_to_arena
  * to associate block and heap to ar_ptr;
  */
 int initialize_new_heap(arena_h_t *ar_ptr)
@@ -338,14 +338,35 @@ int initialize_new_heap(arena_h_t *ar_ptr)
     block_ptr->order_base_addr = block_ptr;
     block_ptr->status = VACANT;
     block_ptr->next = NULL;
-    insert_block_to_arena(ar_ptr, (MAX_ORDER - MIN_ORDER), block_ptr);
+    link_block_to_arena(ar_ptr, (MAX_ORDER - MIN_ORDER), block_ptr);
     // ini heap and link to given pointer
-    insert_heap_to_arena(ar_ptr, sys_page_size, block_ptr);
+    link_heap_to_arena(ar_ptr, sys_page_size, block_ptr);
     return out;
 }
 
-// TODO: add logic
-int initialize_thread_arena() { return SUCCESS; }
+int initialize_thread_arena() { 
+    int out = SUCCESS;
+
+    // ini arena meta data
+    if ((out = initialize_arena_meta()) == FAILURE) {
+        errno = ENOMEM;
+        return out;
+    }
+
+    // bind key
+    pthread_key_create(&cur_arena_key, thread_destructor);
+    pthread_setspecific(cur_arena_key, (void *)cur_arena_p);
+
+    // ini heap meta and block
+    if ((out = initialize_new_heap(cur_arena_p)) == FAILURE) {
+        errno = ENOMEM;
+        return out;
+    }
+
+    // link arena
+
+    return out;
+}
 
 /*
  * assign hook; check for initialize state for current thread;

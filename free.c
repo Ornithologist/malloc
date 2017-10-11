@@ -56,7 +56,7 @@ void release_buddy_block(arena_h_t *ar_ptr, block_h_t *block_ptr)
     // stop releasing when reaching max or IN_USE buddy
     if (order == MAX_ORDER ||
         (buddy_block_ptr = find_vacant_buddy(block_ptr)) == NULL) {
-        insert_block_to_arena(ar_ptr, order - MIN_ORDER, block_ptr);
+        link_block_to_arena(ar_ptr, order - MIN_ORDER, block_ptr);
         return;
     }
 
@@ -69,9 +69,9 @@ void release_buddy_block(arena_h_t *ar_ptr, block_h_t *block_ptr)
         itr = itr->next;
     }
 
-    // no reference to buddy, insert block and return
+    // no reference to buddy, link block and return
     if (prev_itr == NULL || itr != buddy_block_ptr) {
-        insert_block_to_arena(ar_ptr, order - MIN_ORDER, block_ptr);
+        link_block_to_arena(ar_ptr, order - MIN_ORDER, block_ptr);
         return;
     }
 
