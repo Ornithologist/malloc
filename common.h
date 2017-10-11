@@ -123,8 +123,6 @@ extern void *malloc(size_t size);
 extern void *free(void *mem_ptr);
 extern void *calloc(size_t nmemb, size_t size);
 
-extern int no_of_arenas;
-extern int no_of_processors;
 extern long sys_page_size;
 extern bool malloc_initialized;
 extern mallinfo mallinfo_global;

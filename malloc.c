@@ -12,8 +12,6 @@
 
 // ini extern
 // FIXME: a better way to organise ?
-int no_of_arenas = 1;
-int no_of_processors = 1;
 long sys_page_size = HEAP_PAGE_SIZE;
 bool malloc_initialized = 0;
 arena_h_t *main_thread_arena_p;
@@ -224,8 +222,6 @@ int initialize_main_arena()
     // confirm global variables
     if ((sys_page_size = sysconf(_SC_PAGESIZE)) == -1)
         sys_page_size = HEAP_PAGE_SIZE;
-    if ((no_of_processors = sysconf(_SC_NPROCESSORS_ONLN)) == -1)
-        no_of_processors = 1;
 
     // ini arena meta data
     if ((out = initialize_arena_meta()) == FAILURE) {
