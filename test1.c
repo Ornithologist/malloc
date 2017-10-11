@@ -45,24 +45,7 @@ int main(int argc, char **argv)
     
     deallocate(mem2);
     deallocate(mem1);
-    // deallocate(mem3);
 
-    // mem1 = allocate(450);
-    // mem2 = allocate(150);
-    // mem3 = allocate(23);
-
-    // deallocate(mem3);
-    // deallocate(mem2);
-    // deallocate(mem1);
-
-    // mem1 = allocate(8900);
-    // mem2 = allocate(5600);
-    // mem3 = allocate(2);
-    // deallocate(mem3);
-    // deallocate(mem1);
-    // deallocate(mem2);
-
-    // void *mem = malloc(2400);
     int *a = (int *) malloc(sizeof(int));
     (*a) = 18;
     deallocate(a);
