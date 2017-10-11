@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 {
     size_t size1 = 12;
     size_t size2 = 1100;
-    size_t size3 = 2200;
+    size_t size3 = 8899;
     
     void *mem1 = allocate(size1);
     void *mem2 = allocate(size2);

@@ -99,7 +99,7 @@ int initialize_thread_arena();
 int initialize_new_heap(arena_h_t *ar_ptr);
 int validate_addr(arena_h_t *ar_ptr, void *mem_ptr);
 void thread_destructor(void *ptr);
-void *initialize_malloc_lib(size_t size, const void *caller);
+void *initialize_lib(size_t size, const void *caller);
 void release_buddy_block(arena_h_t *ar_ptr, block_h_t *block_ptr);
 void release_mmap_block(arena_h_t *ar_ptr, block_h_t *block_ptr);
 void insert_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr);
@@ -116,7 +116,7 @@ block_h_t *mmap_new_block(arena_h_t *ar_ptr, uint8_t size_order);
 block_h_t *find_vacant_buddy(block_h_t *block_ptr);
 
 typedef void *(*__hook)(size_t __size, const void *);
-static __hook __malloc_hook = (__hook)initialize_malloc_lib;
+static __hook __malloc_hook = (__hook)initialize_lib;
 
 void *__lib_malloc(size_t size);
 extern void *malloc(size_t size);
@@ -132,7 +132,7 @@ extern __thread mallinfo cur_mallinfo;
 extern __thread arena_h_t *cur_arena_p;
 extern __thread heap_h_t *cur_base_heap_p;
 extern __thread pthread_key_t cur_arena_key;
-static pthread_mutex_t malloc_thread_init_lock = PTHREAD_MUTEX_INITIALIZER;
+extern pthread_mutex_t lib_ini_lock;
 
 typedef void (*pthread_atfork_handlers)(void);
 typedef void (*thread_exit_handlers)(void *);

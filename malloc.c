@@ -10,17 +10,24 @@
 #include <unistd.h>
 #include "common.h"
 
-// ini extern
+// ini globals
 // FIXME: a better way to organise ?
 long sys_page_size = HEAP_PAGE_SIZE;
 bool malloc_initialized = 0;
 arena_h_t *main_thread_arena_p;
+pthread_mutex_t lib_ini_lock = PTHREAD_MUTEX_INITIALIZER;
+mallinfo mallinfo_global = (mallinfo){0, 0, 0, 0, 0, 0};
+
+// per thread global
 __thread heap_h_t *cur_base_heap_p;
 __thread arena_h_t *cur_arena_p;
 __thread pthread_key_t cur_arena_key;
 __thread mallinfo cur_mallinfo = (mallinfo){0, 0, 0, 0, 0, 0};
-mallinfo mallinfo_global = (mallinfo){0, 0, 0, 0, 0, 0};
 
+/*
+ * link block to ar_ptr->bins[bin_index]
+ * by sorting from smallest addr to largest addr
+ */
 void insert_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
                            block_h_t *block_to_insert)
 {
@@ -51,6 +58,10 @@ void insert_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
     }
 }
 
+/*
+ * create a heap with size=size, base_block=block_ptr;
+ * link the heap to ar_ptr->base_heap by appending to the link list
+ */
 void insert_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr)
 {
     heap_h_t *new_heap_ptr, *prev_itr = NULL;
@@ -75,8 +86,13 @@ void insert_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr)
     return;
 }
 
+/*
+ * split mem_block_ptr into 2 equal-sized buddies;
+ * return first buddy (smaller starting addr) to be used by malloc,
+ * reserve second buddy by linking it to arena
+ */
 void *split_block_to_buddies(arena_h_t *ar_ptr, block_h_t *mem_block_ptr,
-                                   int block_size_order)
+                             int block_size_order)
 {
     int size = pow(2, block_size_order);
     void *mem_block_1 = mem_block_ptr;
@@ -99,6 +115,13 @@ void *split_block_to_buddies(arena_h_t *ar_ptr, block_h_t *mem_block_ptr,
     return mem_block_1;
 }
 
+/*
+ * find a block from ar_ptr->bins[bin_index],
+ * if not found, check for availability at ar_ptr->bins[bin_index+1]
+ * and call @split_block_to_buddies accordingly;
+ * repeat the process until a block is found, or reached MAX_ORDER;
+ * return NULL when not found
+ */
 block_h_t *find_vacant_block(arena_h_t *ar_ptr, uint8_t bin_index)
 {
     // last bin is for size>4096
@@ -124,6 +147,11 @@ block_h_t *find_vacant_block(arena_h_t *ar_ptr, uint8_t bin_index)
     return ret_ptr;
 }
 
+/*
+ * find vacant block from ar_ptr->bins[8] (mmapped blocks) 
+ * that has order no smaller than size_order;
+ * return NULL when not found
+ */
 block_h_t *find_vacant_mmap_block(arena_h_t *ar_ptr, uint8_t size_order)
 {
     block_h_t *prev_itr = NULL, *ret_ptr = NULL,
@@ -147,6 +175,10 @@ block_h_t *find_vacant_mmap_block(arena_h_t *ar_ptr, uint8_t size_order)
     return ret_ptr;
 }
 
+/*
+ * sbrk a new heap for ar_ptr; find a vacant block of
+ * order size_order and return
+ */
 block_h_t *sbrk_new_block(arena_h_t *ar_ptr, uint8_t size_order)
 {
     if (initialize_new_heap(ar_ptr) == FAILURE) {
@@ -156,6 +188,9 @@ block_h_t *sbrk_new_block(arena_h_t *ar_ptr, uint8_t size_order)
     return find_vacant_block(ar_ptr, size_order - MIN_ORDER);
 }
 
+/*
+ * mmap a new heap for ar_ptr; return the starting addr 
+ */
 block_h_t *mmap_new_block(arena_h_t *ar_ptr, uint8_t size_order)
 {
     size_t size = pow(2, size_order);
@@ -168,7 +203,7 @@ block_h_t *mmap_new_block(arena_h_t *ar_ptr, uint8_t size_order)
         return NULL;
     }
 
-    block_ptr = (block_h_t *) mmapped;
+    block_ptr = (block_h_t *)mmapped;
     block_ptr->order = size_order;
     block_ptr->order_base_addr = mmapped;
     block_ptr->status = VACANT;
@@ -180,12 +215,36 @@ block_h_t *mmap_new_block(arena_h_t *ar_ptr, uint8_t size_order)
     return block_ptr;
 }
 
-void *initialize_malloc_lib(size_t size, const void *caller)
+// called upon before fork() takes place
+void prepare_atfork(void)
 {
-    // TODO: fork handles
-    // if (pthread_atfork(pthread_atfork_prepare, pthread_atfork_parent,
-    // 		pthread_atfork_child))
-    // 	return NULL;
+    pthread_mutex_lock(&lib_ini_lock);
+    arena_h_t *itr = main_thread_arena_p;
+    while (itr) {
+        pthread_mutex_lock(&itr->lock);
+        itr = itr->next;
+    }
+}
+
+// shared by parent and child upon completion of fork()
+void oncomplete_atfork(void)
+{
+    arena_h_t *itr = main_thread_arena_p;
+    while (itr) {
+        pthread_mutex_unlock(&itr->lock);
+        itr = itr->next;
+    }
+    pthread_mutex_unlock(&lib_ini_lock);
+}
+
+/*
+ * initialize libmalloc; register pthread_atfork handlers;
+ * create first arena in the main thread; 
+ */
+void *initialize_lib(size_t size, const void *caller)
+{
+    if (pthread_atfork(prepare_atfork, oncomplete_atfork, oncomplete_atfork))
+        return NULL;
 
     if (initialize_main_arena()) {
         return NULL;
@@ -195,8 +254,18 @@ void *initialize_malloc_lib(size_t size, const void *caller)
     return malloc(size);
 }
 
+// TODO: add thread destructor
 void thread_destructor(void *ptr) { return; }
 
+/*
+ * allocate a memory region of PAGE_SIZE;
+ * store the arena_h_t instance and all heap_h_t instances
+ * in the current thread to this region
+ *
+ * FIXME: this limits number of heaps to be less than
+ * (4096 - sizeof(arena_h_t)) / sizeof(heap_h_t),
+ * find a more scalable solution
+ */
 int initialize_arena_meta()
 {
     int out = SUCCESS;
@@ -213,6 +282,12 @@ int initialize_arena_meta()
     return out;
 }
 
+/*
+ * confirm PAGE_SIZE; initialise main thread arena;
+ * bind current arena pointer to current arena key;
+ * create the first heap (for malloc's use);
+ * refer main_thread_arena_p to the arena initalized;
+ */
 int initialize_main_arena()
 {
     int out = SUCCESS;
@@ -245,6 +320,12 @@ int initialize_main_arena()
     return out;
 }
 
+/*
+ * allocate memory of PAGE_SIZE with sbrk;
+ * point the returned addr to the initial block (of MAX_ORDER);
+ * call @insert_block_to_arena and @insert_heap_to_arena
+ * to associate block and heap to ar_ptr;
+ */
 int initialize_new_heap(arena_h_t *ar_ptr)
 {
     int out = SUCCESS;
@@ -263,8 +344,13 @@ int initialize_new_heap(arena_h_t *ar_ptr)
     return out;
 }
 
-int initialize_thread_arena() { return SUCCESS; } // TODO: add logic
+// TODO: add logic
+int initialize_thread_arena() { return SUCCESS; }
 
+/*
+ * assign hook; check for initialize state for current thread;
+ * convert size to order, and call corresponding handler;
+ */
 void *__lib_malloc(size_t size)
 {
     block_h_t *ret_addr = NULL;
@@ -297,8 +383,9 @@ void *__lib_malloc(size_t size)
             ret_addr = (void *)((char *)ret_addr + sizeof(block_h_t));
         }
     } else {
-        if ((ret_addr = find_vacant_mmap_block(cur_arena_p, size_order)) != NULL ||
-                (ret_addr = mmap_new_block(cur_arena_p, size_order)) != NULL) {
+        if ((ret_addr = find_vacant_mmap_block(cur_arena_p, size_order)) !=
+                NULL ||
+            (ret_addr = mmap_new_block(cur_arena_p, size_order)) != NULL) {
             ret_addr->status = IN_USE;
             ret_addr = (void *)((char *)ret_addr + sizeof(block_h_t));
         }
