@@ -4,7 +4,7 @@ A malloc library that provides the dynamic memory allocation routines _malloc_, 
 
 ## Design Overview
 
-Upon each _malloc_ request, it searches through `block`s, the most granular data structure in the libaray that represents a memory region that can be used by _malloc_, _calloc_, or _realloc_.
+Upon each _malloc_ request, it searches through `block`s, the most granular data structure in the libaray that represents a memory region to be used by _malloc_, _calloc_, or _realloc_.
 
 Buddy allocation is used for memory requests with size smaller than 4096 bytes. The smallest `block`  is 32 bytes. There's no upper limit. `block` keeps a reference to its sibling of the same size, thus forming a linked list.
 
