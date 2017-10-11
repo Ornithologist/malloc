@@ -43,7 +43,6 @@ block_h_t *find_vacant_buddy(block_h_t *block_ptr)
         buddy_ptr = (block_h_t *)((char *)block_ptr + size);
 
     if (buddy_ptr->status == VACANT) return buddy_ptr;
-    printf("buddy located at %p\n", buddy_ptr);
     return NULL;
 }
 
@@ -116,7 +115,7 @@ void __lib_free(void *mem_ptr)
         return;
     }
 
-    block_ptr = (block_h_t *)mem_ptr - sizeof(block_h_t);
+    block_ptr = (block_h_t *) ((char *)mem_ptr - sizeof(block_h_t));
 
     pthread_mutex_lock(&cur_arena_p->lock);
     mallinfo_global.freereqs++;

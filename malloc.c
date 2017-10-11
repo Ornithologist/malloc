@@ -118,8 +118,6 @@ block_h_t *find_vacant_block(arena_h_t *ar_ptr, uint8_t bin_index)
         block_h_t *block =
             (block_h_t *)find_vacant_block(ar_ptr, bin_index + 1);
 
-        printf("to be divided %p\n", block);
-
         if (block != NULL) {
             ret_ptr = divide_block_and_add_to_bins(ar_ptr, block, block->order);
         }
@@ -259,8 +257,6 @@ int initialize_new_heap(arena_h_t *ar_ptr)
     block_h_t *block_ptr = NULL;
 
     if ((block_ptr = (block_h_t *)sbrk(sys_page_size)) == NULL) return FAILURE;
-
-    printf("%p %zu\n", block_ptr, sys_page_size);
 
     block_ptr->order = MAX_ORDER;
     block_ptr->order_base_addr = block_ptr;
