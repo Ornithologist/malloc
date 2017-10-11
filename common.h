@@ -19,10 +19,10 @@
 #define VALID 0
 #define INVALID 1
 
-#define BASE 2  // 2 bytes
-#define MAX_BINS 9
-#define MIN_ORDER 5   // 32 bytes
-#define MAX_ORDER 12  // 4096 bytes
+#define BASE 2          // 2 bytes
+#define MAX_BINS 9      // 32 to 4096, plus >4096
+#define MIN_ORDER 5     // 32 bytes
+#define MAX_ORDER 12    // 4096 bytes
 #define HEAP_PAGE_SIZE 4096
 
 #define SIZE_TO_ORDER(size) (ceil((log(size) / log(BASE))))
