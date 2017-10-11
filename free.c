@@ -63,7 +63,6 @@ void release_buddy_block(arena_h_t *ar_ptr, block_h_t *block_ptr)
     // find reference
     bin_index = order - MIN_ORDER;
     itr = ar_ptr->bins[bin_index];
-
     while (itr != NULL && itr != buddy_block_ptr) {
         prev_itr = itr;
         itr = itr->next;

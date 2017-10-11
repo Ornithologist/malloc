@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 
 void *allocate(size_t size) {
     void *mem = malloc(size);
@@ -31,8 +32,7 @@ void *reallocate(void *ptr, size_t size) {
     printf("Successfully realloc'd at addr %p\n", mem);
 }
 
-int main(int argc, char **argv)
-{
+void *multithread() {
     size_t size1 = 12;
     size_t size2 = 1100;
     size_t size3 = 8899;
@@ -42,15 +42,22 @@ int main(int argc, char **argv)
     void *mem3 = allocate(size3);
 
     reallocate(mem3, 1200);
-    
     deallocate(mem2);
     deallocate(mem1);
+}
+
+int main(int argc, char **argv)
+{
+    pthread_t tid;
 
     int *a = (int *) malloc(sizeof(int));
     (*a) = 18;
     deallocate(a);
     void *mem = callocate(45, 50);
     deallocate(mem);
+
+    pthread_create(&tid, NULL, multithread, NULL);
+    pthread_join(tid, NULL);
 
     return 0;
 }
