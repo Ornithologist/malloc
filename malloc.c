@@ -248,7 +248,6 @@ int initialize_main_arena()
 int initialize_new_heap(arena_h_t *ar_ptr)
 {
     int out = SUCCESS;
-
     // ini 12 order block
     block_h_t *block_ptr = NULL;
 
@@ -259,35 +258,37 @@ int initialize_new_heap(arena_h_t *ar_ptr)
     block_ptr->status = VACANT;
     block_ptr->next = NULL;
     insert_block_to_arena(ar_ptr, (MAX_ORDER - MIN_ORDER), block_ptr);
-
     // ini heap and link to given pointer
     insert_heap_to_arena(ar_ptr, sys_page_size, block_ptr);
     return out;
 }
 
-int initialize_thread_arena() { return SUCCESS; }
+int initialize_thread_arena() { return SUCCESS; } // TODO: add logic
 
 void *__lib_malloc(size_t size)
 {
     block_h_t *ret_addr = NULL;
 
+    // hook & thread ini
     __hook lib_hook = __malloc_hook;
-
     if (lib_hook != NULL) {
         return (*lib_hook)(size, __builtin_return_address(0));
     }
-
     if (cur_arena_p == NULL && initialize_thread_arena()) {
         errno = ENOMEM;
         return NULL;
     }
+
+    // lock and increment stats
     pthread_mutex_lock(&cur_arena_p->lock);
     mallinfo_global.alloreqs++;
     cur_mallinfo.alloreqs++;
 
+    // find required order
     uint8_t size_order = SIZE_TO_ORDER(size + sizeof(block_h_t));
     if (size_order < MIN_ORDER) size_order = MIN_ORDER;
 
+    // allocate using sbkr or mmap
     if (size_order <= MAX_ORDER) {
         if ((ret_addr = find_vacant_block(cur_arena_p,
                                           (size_order - MIN_ORDER))) != NULL ||
@@ -303,6 +304,7 @@ void *__lib_malloc(size_t size)
         }
     }
 
+    // unlock and wrap up
     pthread_mutex_unlock(&cur_arena_p->lock);
     return (void *)ret_addr;
 }
