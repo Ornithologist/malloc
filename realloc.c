@@ -10,8 +10,24 @@
 #include <stddef.h>
 #include "common.h"
 
+__realloc_hook_t __realloc_hook = (__realloc_hook_t)initialize_realloc;
+
+void *initialize_realloc(void *ptr, size_t size, const void *caller) {
+    if (initialize_main_arena()) {
+        return NULL;
+    }
+
+    __realloc_hook = NULL;
+    return realloc(ptr, size);
+}
+
 void* __lib_realloc(void* ptr, size_t size)
 {
+    __realloc_hook_t lib_hook = __realloc_hook;
+    if (lib_hook != NULL) {
+        return (*lib_hook)(ptr, size, __builtin_return_address(0));
+    }
+
     // If ptr is NULL, then  the  call  is  equivalent  to  mal-
     // loc(size), for all values of size;
     // if size is equal to zero, and ptr is not NULL, then the

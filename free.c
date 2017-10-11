@@ -11,6 +11,8 @@
 #include <unistd.h>
 #include "common.h"
 
+__free_hook_t __free_hook = (__free_hook_t)initialize_free;
+
 int validate_addr(arena_h_t *ar_ptr, void *mem_ptr)
 {
     int ret_val = VALID;
@@ -102,8 +104,25 @@ void remove_heap_from_arena(arena_h_t *ar_ptr, block_h_t *block_ptr){
     }
 }
 
+
+void initialize_free(void *ptr, const void *caller)
+{
+    if (initialize_main_arena()) {
+        return;
+    }
+
+    __free_hook = NULL;
+    free(ptr);
+    return;
+}
+
 void __lib_free(void *mem_ptr)
 {
+    __free_hook_t lib_hook = __free_hook;
+    if (lib_hook != NULL) {
+        return (*lib_hook)(mem_ptr, __builtin_return_address(0));
+    }
+
     block_h_t *block_ptr = NULL;
 
     if (cur_arena_p == NULL) {

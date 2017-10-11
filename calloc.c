@@ -10,8 +10,25 @@
 #include <stddef.h>
 #include "common.h"
 
+__calloc_hook_t __calloc_hook = (__calloc_hook_t)initialize_calloc;
+
+void *initialize_calloc(size_t nmemb, size_t size, const void *caller)
+{
+    if (initialize_main_arena()) {
+        return NULL;
+    }
+
+    __calloc_hook = NULL;
+    return calloc(nmemb, size);
+}
+
 void *__lib_calloc(size_t nmemb, size_t size)
 {
+    __calloc_hook_t lib_hook = __calloc_hook;
+    if (lib_hook != NULL) {
+        return (*lib_hook)(nmemb, size, __builtin_return_address(0));
+    }
+
     if (nmemb == 0 || size == 0)
         return NULL;
 

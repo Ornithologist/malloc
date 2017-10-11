@@ -24,6 +24,9 @@ __thread arena_h_t *cur_arena_p;
 __thread pthread_key_t cur_arena_key;
 __thread mallinfo cur_mallinfo = (mallinfo){0, 0, 0, 0, 0, 0};
 
+// hook
+__malloc_hook_t __malloc_hook = (__malloc_hook_t)initialize_lib;
+
 /*
  * link block to ar_ptr->bins[bin_index]
  * by sorting from smallest addr to largest addr
@@ -408,7 +411,7 @@ void *__lib_malloc(size_t size)
     block_h_t *ret_addr = NULL;
 
     // hook & thread ini
-    __hook lib_hook = __malloc_hook;
+    __malloc_hook_t lib_hook = __malloc_hook;
     if (lib_hook != NULL) {
         return (*lib_hook)(size, __builtin_return_address(0));
     }
