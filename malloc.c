@@ -13,7 +13,7 @@
 // ini globals
 // FIXME: a better way to organise ?
 long sys_page_size = HEAP_PAGE_SIZE;
-bool malloc_initialized = 0;
+int malloc_initialized = 0;
 arena_h_t *main_thread_arena_p;
 pthread_mutex_t lib_ini_lock = PTHREAD_MUTEX_INITIALIZER;
 mallinfo mallinfo_global = (mallinfo){0, 0, 0, 0, 0, 0};

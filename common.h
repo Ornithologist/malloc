@@ -130,7 +130,7 @@ extern void *calloc(size_t nmemb, size_t size);
 extern void *realloc(void *ptr, size_t size);
 
 extern long sys_page_size;
-extern bool malloc_initialized;
+extern int malloc_initialized;
 extern mallinfo mallinfo_global;
 extern arena_h_t *main_thread_arena_p;
 extern __thread mallinfo cur_mallinfo;
