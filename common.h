@@ -78,8 +78,8 @@ typedef struct _arena_header {
  * @attri narenas: number of arenas
  * @attri alloreqs: number of allocation requests
  * @attri freereqs: number of free requests
- * @attri alloreqs: number of allocated blocks
- * @attri freereqs: number of free blocks
+ * @attri alloblks: number of allocated blocks
+ * @attri freeblks: number of free blocks
  * @attri uordblks: total allocated space in bytes
  * @attri fordblks: total free space in bytes
  */
@@ -125,7 +125,7 @@ typedef void *(*__calloc_hook_t)(size_t nmemb, size_t size, const void *caller);
 
 void *__lib_malloc(size_t size);
 extern void *malloc(size_t size);
-extern void *free(void *mem_ptr);
+extern void free(void *mem_ptr);
 extern void *calloc(size_t nmemb, size_t size);
 extern void *realloc(void *ptr, size_t size);
 

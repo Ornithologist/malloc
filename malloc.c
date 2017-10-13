@@ -59,6 +59,7 @@ void link_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
             prev_block->next = vacant_block;
         }
     }
+    cur_mallinfo.freeblks += 1;
 }
 
 /*
@@ -304,6 +305,7 @@ int initialize_arena_meta()
     memset(&(cur_arena_p->lock), 0, sizeof(pthread_mutex_t));
     memset(&(cur_arena_p->bin_counts), 0, sizeof(uint16_t) * MAX_BINS);
     mallinfo_global.narenas += 1;
+    cur_mallinfo.narenas += 1;
     return out;
 }
 
@@ -375,10 +377,11 @@ int initialize_new_heap(arena_h_t *ar_ptr)
     // ini heap and link to given pointer
     link_heap_to_arena(ar_ptr, sys_page_size, block_ptr);
     mallinfo_global.arena += sys_page_size;
+    cur_mallinfo.arena += sys_page_size;
     return out;
 }
 
-int initialize_thread_arena() { 
+int initialize_thread_arena() {
     int out = SUCCESS;
 
     // ini arena meta data
@@ -454,6 +457,9 @@ void *__lib_malloc(size_t size)
             (ret_addr = sbrk_new_block(cur_arena_p, size_order)) != NULL) {
             ret_addr->status = IN_USE;
             ret_addr = (void *)((char *)ret_addr + sizeof(block_h_t));
+            cur_mallinfo.alloblks += 1;
+            mallinfo_global.alloblks += 1;
+            cur_mallinfo.uordblks += pow(2, size_order);
         }
     } else {
         if ((ret_addr = find_vacant_mmap_block(cur_arena_p, size_order)) !=
@@ -461,6 +467,9 @@ void *__lib_malloc(size_t size)
             (ret_addr = mmap_new_block(cur_arena_p, size_order)) != NULL) {
             ret_addr->status = IN_USE;
             ret_addr = (void *)((char *)ret_addr + sizeof(block_h_t));
+            cur_mallinfo.alloblks += 1;
+            mallinfo_global.alloblks += 1;
+            cur_mallinfo.uordblks += pow(2, size_order);
         }
     }
 

@@ -124,6 +124,7 @@ void __lib_free(void *mem_ptr)
     }
 
     block_h_t *block_ptr = NULL;
+    uint8_t order = 0;
 
     if (cur_arena_p == NULL) {
         return;
@@ -134,20 +135,25 @@ void __lib_free(void *mem_ptr)
     }
 
     block_ptr = (block_h_t *) ((char *)mem_ptr - sizeof(block_h_t));
+    order = block_ptr->order;
 
     pthread_mutex_lock(&cur_arena_p->lock);
     cur_mallinfo.freereqs++;
 
-    if (block_ptr->order <= MAX_ORDER) {
+    if (order <= MAX_ORDER) {
         release_buddy_block(cur_arena_p, block_ptr);
     } else {
-        size_t size = pow(2, block_ptr->order);
+        size_t size = pow(2, order);
         remove_heap_from_arena(cur_arena_p, block_ptr);
         int res = munmap(block_ptr->order_base_addr, size);
         assert(res == 0);
-        mallinfo_global.arena -= size;
     }
+    mallinfo_global.arena -= pow(2, order);
+    cur_mallinfo.arena -= pow(2, order);
+    cur_mallinfo.alloblks -= 1;
+    mallinfo_global.alloblks -= 1;
+    cur_mallinfo.uordblks -= pow(2, order);
 
     pthread_mutex_unlock(&cur_arena_p->lock);
 }
-void *free(void *mem_ptr) __attribute__((weak, alias("__lib_free")));
+void free(void *mem_ptr) __attribute__((weak, alias("__lib_free")));
