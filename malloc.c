@@ -16,13 +16,13 @@ long sys_page_size = HEAP_PAGE_SIZE;
 int malloc_initialized = 0;
 arena_h_t *main_thread_arena_p;
 pthread_mutex_t lib_ini_lock = PTHREAD_MUTEX_INITIALIZER;
-mallinfo mallinfo_global = (mallinfo){0, 0, 0, 0, 0, 0};
+mallinfo mallinfo_global = (mallinfo){0, 0, 0, 0, 0, 0, 0, 0};
 
 // per thread global
 __thread heap_h_t *cur_base_heap_p;
 __thread arena_h_t *cur_arena_p;
 __thread pthread_key_t cur_arena_key;
-__thread mallinfo cur_mallinfo = (mallinfo){0, 0, 0, 0, 0, 0};
+__thread mallinfo cur_mallinfo = (mallinfo){0, 0, 0, 0, 0, 0, 0, 0};
 
 // hook
 __malloc_hook_t __malloc_hook = (__malloc_hook_t)initialize_lib;
@@ -303,7 +303,7 @@ int initialize_arena_meta()
     cur_arena_p->base_heap = NULL;
     memset(&(cur_arena_p->lock), 0, sizeof(pthread_mutex_t));
     memset(&(cur_arena_p->bin_counts), 0, sizeof(uint16_t) * MAX_BINS);
-
+    mallinfo_global.narenas += 1;
     return out;
 }
 
@@ -339,9 +339,17 @@ int initialize_main_arena()
         return out;
     }
 
-    // raise flag
+    // raise flag & set stats
     malloc_initialized = 1;
     main_thread_arena_p = cur_arena_p;
+    cur_mallinfo.arena = 0;
+    cur_mallinfo.narenas = 0;
+    cur_mallinfo.alloreqs = 0;
+    cur_mallinfo.freereqs = 0;
+    cur_mallinfo.alloblks = 0;
+    cur_mallinfo.freeblks = 0;
+    cur_mallinfo.uordblks = 0;
+    cur_mallinfo.fordblks = 0;
     return out;
 }
 
@@ -366,6 +374,7 @@ int initialize_new_heap(arena_h_t *ar_ptr)
     link_block_to_arena(ar_ptr, (MAX_ORDER - MIN_ORDER), block_ptr);
     // ini heap and link to given pointer
     link_heap_to_arena(ar_ptr, sys_page_size, block_ptr);
+    mallinfo_global.arena += sys_page_size;
     return out;
 }
 
@@ -399,6 +408,16 @@ int initialize_thread_arena() {
     } else {
         main_thread_arena_p = cur_arena_p;
     }
+
+    // set stats
+    cur_mallinfo.arena = 0;
+    cur_mallinfo.narenas = 0;
+    cur_mallinfo.alloreqs = 0;
+    cur_mallinfo.freereqs = 0;
+    cur_mallinfo.alloblks = 0;
+    cur_mallinfo.freeblks = 0;
+    cur_mallinfo.uordblks = 0;
+    cur_mallinfo.fordblks = 0;
     return out;
 }
 
@@ -422,7 +441,6 @@ void *__lib_malloc(size_t size)
 
     // lock and increment stats
     pthread_mutex_lock(&cur_arena_p->lock);
-    mallinfo_global.alloreqs++;
     cur_mallinfo.alloreqs++;
 
     // find required order

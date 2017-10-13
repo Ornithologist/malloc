@@ -136,7 +136,6 @@ void __lib_free(void *mem_ptr)
     block_ptr = (block_h_t *) ((char *)mem_ptr - sizeof(block_h_t));
 
     pthread_mutex_lock(&cur_arena_p->lock);
-    mallinfo_global.freereqs++;
     cur_mallinfo.freereqs++;
 
     if (block_ptr->order <= MAX_ORDER) {
@@ -146,6 +145,7 @@ void __lib_free(void *mem_ptr)
         remove_heap_from_arena(cur_arena_p, block_ptr);
         int res = munmap(block_ptr->order_base_addr, size);
         assert(res == 0);
+        mallinfo_global.arena -= size;
     }
 
     pthread_mutex_unlock(&cur_arena_p->lock);
