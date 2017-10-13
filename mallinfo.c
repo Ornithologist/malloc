@@ -15,9 +15,12 @@
  * returns the main thread arena information
  * arenas from other threads are excluded
  */
-struct mallinfo_t __lib_mallinfo() {
-    mallinfo_t *main_mallinfo_p = (mallinfo_t *)((char *)main_thread_arena_p + sizeof(arena_h_t));
+struct _mallinfo __lib_mallinfo()
+{
+    mallinfo_t *main_mallinfo_p =
+        (mallinfo_t *)((char *)main_thread_arena_p + sizeof(arena_h_t));
     mallinfo_t main_mallinfo = (*main_mallinfo_p);
     return main_mallinfo;
 }
+
 struct mallinfo_t mallinfo() __attribute__((weak, alias("__lib_mallinfo")));

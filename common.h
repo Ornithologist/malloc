@@ -19,10 +19,10 @@
 #define VALID 0
 #define INVALID 1
 
-#define BASE 2          // 2 bytes
-#define MAX_BINS 9      // 32 to 4096, plus >4096
-#define MIN_ORDER 5     // 32 bytes
-#define MAX_ORDER 12    // 4096 bytes
+#define BASE 2        // 2 bytes
+#define MAX_BINS 9    // 32 to 4096, plus >4096
+#define MIN_ORDER 5   // 32 bytes
+#define MAX_ORDER 12  // 4096 bytes
 #define HEAP_PAGE_SIZE 4096
 
 #define SIZE_TO_ORDER(size) (ceil((log(size) / log(BASE))))
@@ -108,9 +108,9 @@ void release_mmap_block(arena_h_t *ar_ptr, block_h_t *block_ptr);
 void link_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr);
 void remove_heap_from_arena(arena_h_t *ar_ptr, block_h_t *block_ptr);
 void link_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
-                           block_h_t *block_to_insert);
+                         block_h_t *block_to_insert);
 void *split_block_to_buddies(arena_h_t *ar_ptr, block_h_t *mem_block_ptr,
-                                   int block_size_order);
+                             int block_size_order);
 
 block_h_t *find_vacant_block(arena_h_t *ar_ptr, uint8_t bin_index);
 block_h_t *find_vacant_mmap_block(arena_h_t *ar_ptr, uint8_t size_order);

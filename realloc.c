@@ -1,18 +1,19 @@
-#include <stdio.h>
-#include <pthread.h>
 #include <errno.h>
-#include <string.h>
-#include <stdint.h>
 #include <math.h>
-#include <unistd.h>
+#include <pthread.h>
 #include <stdbool.h>
-#include <sys/mman.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/mman.h>
+#include <unistd.h>
 #include "common.h"
 
 __realloc_hook_t __realloc_hook = (__realloc_hook_t)initialize_realloc;
 
-void *initialize_realloc(void *ptr, size_t size, const void *caller) {
+void *initialize_realloc(void *ptr, size_t size, const void *caller)
+{
     if (initialize_main_arena()) {
         return NULL;
     }
@@ -21,7 +22,13 @@ void *initialize_realloc(void *ptr, size_t size, const void *caller) {
     return realloc(ptr, size);
 }
 
-void* __lib_realloc(void* ptr, size_t size)
+/*
+ * allocate a memory region of size $size;
+ * copy the content pointed to by $ptr;
+ * leave what's beyond min(size, sizeof(mem_pointed_to_by_ptr)) uninitialized;
+ * finally free the old mem_pointed_to_by_ptr;
+ */
+void *__lib_realloc(void *ptr, size_t size)
 {
     __realloc_hook_t lib_hook = __realloc_hook;
     if (lib_hook != NULL) {
@@ -43,9 +50,10 @@ void* __lib_realloc(void* ptr, size_t size)
     pthread_mutex_lock(&cur_arena_p->lock);
 
     // find minimum range, copy the content from old to new
-    block_h_t *new_ptr = (block_h_t *) ((char *)ret_ptr - sizeof(block_h_t));
-    block_h_t *old_ptr = (block_h_t *) ((char *)ptr - sizeof(block_h_t));
-    uint8_t order = (new_ptr->order < old_ptr->order) ? new_ptr->order : old_ptr->order;
+    block_h_t *new_ptr = (block_h_t *)((char *)ret_ptr - sizeof(block_h_t));
+    block_h_t *old_ptr = (block_h_t *)((char *)ptr - sizeof(block_h_t));
+    uint8_t order =
+        (new_ptr->order < old_ptr->order) ? new_ptr->order : old_ptr->order;
     size_t memcpy_size = pow(2, order) - sizeof(block_h_t);
     memcpy(ret_ptr, ptr, memcpy_size);
 
@@ -54,4 +62,5 @@ void* __lib_realloc(void* ptr, size_t size)
     __lib_free(ptr);
     return ret_ptr;
 }
-void *realloc(void* ptr, size_t size) __attribute__((weak, alias("__lib_realloc")));
+void *realloc(void *ptr, size_t size)
+    __attribute__((weak, alias("__lib_realloc")));

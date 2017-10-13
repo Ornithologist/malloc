@@ -7,12 +7,12 @@ all: check
 default: check
 
 clean:
-	rm -rf libmalloc.so *.o
+	rm -rf libmalloc.so *.o test1
 
 lib: libmalloc.so
 
-libmalloc.so: malloc.o free.o calloc.o realloc.o malloc_stats.o
-	$(CC) -g -o0 -shared -Wl,--unresolved-symbols=ignore-all malloc.o free.o calloc.o realloc.o malloc_stats.o -o libmalloc.so $(CFLAGS_AFT)
+libmalloc.so: malloc.o free.o calloc.o realloc.o malloc_stats.o mallinfo.o
+	$(CC) -g -o0 -shared -Wl,--unresolved-symbols=ignore-all malloc.o free.o calloc.o realloc.o malloc_stats.o mallinfo.o -o libmalloc.so $(CFLAGS_AFT)
 
 test1: test1.o
 	$(CC) $(CFLAGS) $< -o $@ $(CFLAGS_AFT)

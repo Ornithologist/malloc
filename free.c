@@ -13,6 +13,7 @@
 
 __free_hook_t __free_hook = (__free_hook_t)initialize_free;
 
+// check if the address is within the existing heaps' memory region
 int validate_addr(arena_h_t *ar_ptr, void *mem_ptr)
 {
     int ret_val = VALID;
@@ -34,6 +35,10 @@ int validate_addr(arena_h_t *ar_ptr, void *mem_ptr)
     return ret_val;
 }
 
+/*
+ * if the block's starting address == order_base_addr,
+ * its the buddy to the left, otherwise its the right buddy;
+ */
 block_h_t *find_vacant_buddy(block_h_t *block_ptr)
 {
     block_h_t *buddy_ptr = NULL;
@@ -48,6 +53,13 @@ block_h_t *find_vacant_buddy(block_h_t *block_ptr)
     return NULL;
 }
 
+/*
+ * dereference each buddy found;
+ * keep merging the buddy until:
+ * 1) no vacant buddy can be found;
+ * 2) max order reached;
+ * link the merged block back to arena;
+ */
 void release_buddy_block(arena_h_t *ar_ptr, block_h_t *block_ptr)
 {
     uint8_t bin_index;
@@ -89,9 +101,13 @@ void release_buddy_block(arena_h_t *ar_ptr, block_h_t *block_ptr)
     release_buddy_block(ar_ptr, merged_block_ptr);
 }
 
-void remove_heap_from_arena(arena_h_t *ar_ptr, block_h_t *block_ptr){
+/*
+ * unlink the heap from linked list
+ */
+void remove_heap_from_arena(arena_h_t *ar_ptr, block_h_t *block_ptr)
+{
     heap_h_t *itr = ar_ptr->base_heap, *prev_itr = NULL;
-    while(itr != NULL && itr->base_block != block_ptr) {
+    while (itr != NULL && itr->base_block != block_ptr) {
         prev_itr = itr;
         itr = itr->next;
     }
@@ -104,7 +120,7 @@ void remove_heap_from_arena(arena_h_t *ar_ptr, block_h_t *block_ptr){
     }
 }
 
-
+// if main arena not initialized, do it
 void initialize_free(void *ptr, const void *caller)
 {
     if (initialize_main_arena()) {
@@ -116,6 +132,10 @@ void initialize_free(void *ptr, const void *caller)
     return;
 }
 
+/*
+ * retrieve memory block from the buddy system, or from mmapped regions;
+ * for mmapped regions, unmap it; for buddy blocks, merge it with parent buddy;
+ */
 void __lib_free(void *mem_ptr)
 {
     __free_hook_t lib_hook = __free_hook;
@@ -133,13 +153,13 @@ void __lib_free(void *mem_ptr)
     if (validate_addr(cur_arena_p, mem_ptr) == INVALID) {
         return;
     }
-
-    block_ptr = (block_h_t *) ((char *)mem_ptr - sizeof(block_h_t));
+    // get corresponding block, logistics
+    block_ptr = (block_h_t *)((char *)mem_ptr - sizeof(block_h_t));
     order = block_ptr->order;
-
     pthread_mutex_lock(&cur_arena_p->lock);
     cur_mallinfo_p->freereqs++;
 
+    // release memory
     if (order <= MAX_ORDER) {
         release_buddy_block(cur_arena_p, block_ptr);
     } else {

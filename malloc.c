@@ -31,15 +31,14 @@ __malloc_hook_t __malloc_hook = (__malloc_hook_t)initialize_lib;
  * by sorting from smallest addr to largest addr
  */
 void link_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
-                           block_h_t *vacant_block)
+                         block_h_t *vacant_block)
 {
     ar_ptr->bin_counts[bin_index]++;
     vacant_block->next = NULL;
 
     if (ar_ptr->bins[bin_index] == NULL) {  // first comer
         ar_ptr->bins[bin_index] = vacant_block;
-    } else if (vacant_block <
-               ar_ptr->bins[bin_index]) {  // link as start tail
+    } else if (vacant_block < ar_ptr->bins[bin_index]) {  // link as start tail
         vacant_block->next = ar_ptr->bins[bin_index];
         ar_ptr->bins[bin_index] = vacant_block;
     } else {  // link through all existing bins of the same order
@@ -74,7 +73,8 @@ void link_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr)
         itr = itr->next;
     }
     if (prev_itr == NULL) {
-        new_heap_ptr = (heap_h_t *)((char *)ar_ptr + sizeof(arena_h_t) + sizeof(mallinfo_t));
+        new_heap_ptr = (heap_h_t *)((char *)ar_ptr + sizeof(arena_h_t) +
+                                    sizeof(mallinfo_t));
         new_heap_ptr->size = size;
         new_heap_ptr->base_block = block_ptr;
         new_heap_ptr->next = NULL;
@@ -114,8 +114,7 @@ void *split_block_to_buddies(arena_h_t *ar_ptr, block_h_t *mem_block_ptr,
     block_hdr->order = block_size_order - 1;
     block_hdr->order_base_addr = mem_block_ptr->order_base_addr;
     // add second buddy to arena
-    link_block_to_arena(ar_ptr, block_size_order - 1 - MIN_ORDER,
-                          mem_block_2);
+    link_block_to_arena(ar_ptr, block_size_order - 1 - MIN_ORDER, mem_block_2);
     return mem_block_1;
 }
 
@@ -152,7 +151,7 @@ block_h_t *find_vacant_block(arena_h_t *ar_ptr, uint8_t bin_index)
 }
 
 /*
- * find vacant block from ar_ptr->bins[8] (mmapped blocks) 
+ * find vacant block from ar_ptr->bins[8] (mmapped blocks)
  * that has order no smaller than size_order;
  * return NULL when not found
  */
@@ -193,7 +192,7 @@ block_h_t *sbrk_new_block(arena_h_t *ar_ptr, uint8_t size_order)
 }
 
 /*
- * mmap a new heap for ar_ptr; return the starting addr 
+ * mmap a new heap for ar_ptr; return the starting addr
  */
 block_h_t *mmap_new_block(arena_h_t *ar_ptr, uint8_t size_order)
 {
@@ -243,7 +242,7 @@ void oncomplete_atfork(void)
 
 /*
  * initialize libmalloc; register pthread_atfork handlers;
- * create first arena in the main thread; 
+ * create first arena in the main thread;
  */
 void *initialize_lib(size_t size, const void *caller)
 {
@@ -258,11 +257,15 @@ void *initialize_lib(size_t size, const void *caller)
     return malloc(size);
 }
 
-void thread_destructor(void *ptr) {
-    if(ptr == NULL)
-        return;
+/*
+ * on join, or exit, the current thread removes its arena
+ * from the linked list
+ */
+void thread_destructor(void *ptr)
+{
+    if (ptr == NULL) return;
 
-    arena_h_t* ar_ptr = ptr;
+    arena_h_t *ar_ptr = ptr;
 
     pthread_mutex_lock(&lib_ini_lock);
     pthread_mutex_lock(&ar_ptr->lock);
@@ -307,7 +310,7 @@ int initialize_arena_meta()
 
     cur_mallinfo_p = (mallinfo_t *)((char *)cur_arena_p + sizeof(arena_h_t));
     cur_mallinfo_p->arena = 0;
-    cur_mallinfo_p->narenas = 1; // only one arena per thread
+    cur_mallinfo_p->narenas = 1;  // only one arena per thread
     cur_mallinfo_p->alloreqs = 0;
     cur_mallinfo_p->freereqs = 0;
     cur_mallinfo_p->alloblks = 0;
@@ -379,7 +382,12 @@ int initialize_new_heap(arena_h_t *ar_ptr)
     return out;
 }
 
-int initialize_thread_arena() {
+/*
+ * initialize the thread arena; initiate its first heap;
+ * link the arena to previous arena
+ */
+int initialize_thread_arena()
+{
     int out = SUCCESS;
 
     // ini arena meta data
