@@ -57,6 +57,9 @@ int main(int argc, char **argv)
     deallocate(mem);
 
     pthread_create(&tid, NULL, multithread, NULL);
+
+    malloc_stats();
+
     pthread_join(tid, NULL);
 
     return 0;

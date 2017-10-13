@@ -92,7 +92,7 @@ typedef struct _mallinfo {
     int freeblks;
     int uordblks;
     int fordblks;
-} mallinfo;
+} mallinfo_t;
 
 int initialize_main_arena();
 int initialize_thread_arena();
@@ -131,9 +131,8 @@ extern void *realloc(void *ptr, size_t size);
 
 extern long sys_page_size;
 extern int malloc_initialized;
-extern mallinfo mallinfo_global;
 extern arena_h_t *main_thread_arena_p;
-extern __thread mallinfo cur_mallinfo;
+extern __thread mallinfo_t *cur_mallinfo_p;
 extern __thread arena_h_t *cur_arena_p;
 extern __thread heap_h_t *cur_base_heap_p;
 extern __thread pthread_key_t cur_arena_key;

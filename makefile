@@ -11,8 +11,8 @@ clean:
 
 lib: libmalloc.so
 
-libmalloc.so: malloc.o free.o calloc.o realloc.o
-	$(CC) -g -o0 -shared -Wl,--unresolved-symbols=ignore-all malloc.o free.o calloc.o realloc.o -o libmalloc.so $(CFLAGS_AFT)
+libmalloc.so: malloc.o free.o calloc.o realloc.o malloc_stats.o
+	$(CC) -g -o0 -shared -Wl,--unresolved-symbols=ignore-all malloc.o free.o calloc.o realloc.o malloc_stats.o -o libmalloc.so $(CFLAGS_AFT)
 
 test1: test1.o
 	$(CC) $(CFLAGS) $< -o $@ $(CFLAGS_AFT)

@@ -16,13 +16,12 @@ long sys_page_size = HEAP_PAGE_SIZE;
 int malloc_initialized = 0;
 arena_h_t *main_thread_arena_p;
 pthread_mutex_t lib_ini_lock = PTHREAD_MUTEX_INITIALIZER;
-mallinfo mallinfo_global = (mallinfo){0, 0, 0, 0, 0, 0, 0, 0};
 
 // per thread global
 __thread heap_h_t *cur_base_heap_p;
 __thread arena_h_t *cur_arena_p;
 __thread pthread_key_t cur_arena_key;
-__thread mallinfo cur_mallinfo = (mallinfo){0, 0, 0, 0, 0, 0, 0, 0};
+__thread mallinfo_t *cur_mallinfo_p;
 
 // hook
 __malloc_hook_t __malloc_hook = (__malloc_hook_t)initialize_lib;
@@ -59,7 +58,7 @@ void link_block_to_arena(arena_h_t *ar_ptr, uint8_t bin_index,
             prev_block->next = vacant_block;
         }
     }
-    cur_mallinfo.freeblks += 1;
+    cur_mallinfo_p->freeblks += 1;
 }
 
 /*
@@ -75,7 +74,7 @@ void link_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr)
         itr = itr->next;
     }
     if (prev_itr == NULL) {
-        new_heap_ptr = (heap_h_t *)((char *)ar_ptr + sizeof(arena_h_t));
+        new_heap_ptr = (heap_h_t *)((char *)ar_ptr + sizeof(arena_h_t) + sizeof(mallinfo_t));
         new_heap_ptr->size = size;
         new_heap_ptr->base_block = block_ptr;
         new_heap_ptr->next = NULL;
@@ -87,6 +86,7 @@ void link_heap_to_arena(arena_h_t *ar_ptr, size_t size, block_h_t *block_ptr)
         new_heap_ptr->next = NULL;
         prev_itr->next = new_heap_ptr;
     }
+    cur_mallinfo_p->arena += sys_page_size;
     return;
 }
 
@@ -304,8 +304,16 @@ int initialize_arena_meta()
     cur_arena_p->base_heap = NULL;
     memset(&(cur_arena_p->lock), 0, sizeof(pthread_mutex_t));
     memset(&(cur_arena_p->bin_counts), 0, sizeof(uint16_t) * MAX_BINS);
-    mallinfo_global.narenas += 1;
-    cur_mallinfo.narenas += 1;
+
+    cur_mallinfo_p = (mallinfo_t *)((char *)cur_arena_p + sizeof(arena_h_t));
+    cur_mallinfo_p->arena = 0;
+    cur_mallinfo_p->narenas = 1; // only one arena per thread
+    cur_mallinfo_p->alloreqs = 0;
+    cur_mallinfo_p->freereqs = 0;
+    cur_mallinfo_p->alloblks = 0;
+    cur_mallinfo_p->freeblks = 0;
+    cur_mallinfo_p->uordblks = 0;
+    cur_mallinfo_p->fordblks = 0;
     return out;
 }
 
@@ -344,14 +352,6 @@ int initialize_main_arena()
     // raise flag & set stats
     malloc_initialized = 1;
     main_thread_arena_p = cur_arena_p;
-    cur_mallinfo.arena = 0;
-    cur_mallinfo.narenas = 0;
-    cur_mallinfo.alloreqs = 0;
-    cur_mallinfo.freereqs = 0;
-    cur_mallinfo.alloblks = 0;
-    cur_mallinfo.freeblks = 0;
-    cur_mallinfo.uordblks = 0;
-    cur_mallinfo.fordblks = 0;
     return out;
 }
 
@@ -376,8 +376,6 @@ int initialize_new_heap(arena_h_t *ar_ptr)
     link_block_to_arena(ar_ptr, (MAX_ORDER - MIN_ORDER), block_ptr);
     // ini heap and link to given pointer
     link_heap_to_arena(ar_ptr, sys_page_size, block_ptr);
-    mallinfo_global.arena += sys_page_size;
-    cur_mallinfo.arena += sys_page_size;
     return out;
 }
 
@@ -412,15 +410,6 @@ int initialize_thread_arena() {
         main_thread_arena_p = cur_arena_p;
     }
 
-    // set stats
-    cur_mallinfo.arena = 0;
-    cur_mallinfo.narenas = 0;
-    cur_mallinfo.alloreqs = 0;
-    cur_mallinfo.freereqs = 0;
-    cur_mallinfo.alloblks = 0;
-    cur_mallinfo.freeblks = 0;
-    cur_mallinfo.uordblks = 0;
-    cur_mallinfo.fordblks = 0;
     return out;
 }
 
@@ -444,7 +433,7 @@ void *__lib_malloc(size_t size)
 
     // lock and increment stats
     pthread_mutex_lock(&cur_arena_p->lock);
-    cur_mallinfo.alloreqs++;
+    cur_mallinfo_p->alloreqs++;
 
     // find required order
     uint8_t size_order = SIZE_TO_ORDER(size + sizeof(block_h_t));
@@ -457,9 +446,8 @@ void *__lib_malloc(size_t size)
             (ret_addr = sbrk_new_block(cur_arena_p, size_order)) != NULL) {
             ret_addr->status = IN_USE;
             ret_addr = (void *)((char *)ret_addr + sizeof(block_h_t));
-            cur_mallinfo.alloblks += 1;
-            mallinfo_global.alloblks += 1;
-            cur_mallinfo.uordblks += pow(2, size_order);
+            cur_mallinfo_p->alloblks += 1;
+            cur_mallinfo_p->uordblks += pow(2, size_order);
         }
     } else {
         if ((ret_addr = find_vacant_mmap_block(cur_arena_p, size_order)) !=
@@ -467,9 +455,8 @@ void *__lib_malloc(size_t size)
             (ret_addr = mmap_new_block(cur_arena_p, size_order)) != NULL) {
             ret_addr->status = IN_USE;
             ret_addr = (void *)((char *)ret_addr + sizeof(block_h_t));
-            cur_mallinfo.alloblks += 1;
-            mallinfo_global.alloblks += 1;
-            cur_mallinfo.uordblks += pow(2, size_order);
+            cur_mallinfo_p->alloblks += 1;
+            cur_mallinfo_p->uordblks += pow(2, size_order);
         }
     }
 
